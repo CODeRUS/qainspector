@@ -3,14 +3,13 @@
 #define SOCKETCONNECTOR_H
 
 #include <QObject>
-#include <QJSValue>
 
 class QTcpSocket;
 class SocketConnector : public QObject
 {
     Q_OBJECT
 public:
-    explicit SocketConnector(QObject *parent = nullptr);
+    explicit SocketConnector(QObject* parent = nullptr);
 
     Q_PROPERTY(bool connected READ isConnected WRITE setConnected NOTIFY connectedChanged)
     bool isConnected() const;
@@ -21,20 +20,8 @@ public:
     Q_PROPERTY(QString applicationName MEMBER m_applicationName NOTIFY applicationNameChanged)
 
 public slots:
-    QString getDumpPage();
-    void getDumpPage(QJSValue callback);
-
     QString getDumpTree();
-    void getDumpTree(QJSValue callback);
-
-    QString getDumpCover();
-    void getDumpCover(QJSValue callback);
-
     bool getGrabWindow();
-    void getGrabWindow(QJSValue callback);
-
-    bool getGrabCover();
-    void getGrabCover(QJSValue callback);
 
 signals:
     void connectedChanged(bool connected);

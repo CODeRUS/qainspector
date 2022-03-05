@@ -5,36 +5,42 @@
 #include <QPaintEvent>
 #include <QPainter>
 
-PaintedWidget::PaintedWidget(QWidget *parent)
+PaintedWidget::PaintedWidget(QWidget* parent)
     : QWidget(parent)
 {
     QPixmap image;
     image.load("dump.png");
-    if (image.isNull()) {
+    if (image.isNull())
+    {
         setFixedSize(640, 480);
-    } else {
-        setFixedSize(image.size().width() / 2, image.size().height() / 2);
+    }
+    else
+    {
+        setFixedSize(image.size().width(), image.size().height());
     }
 }
 
-void PaintedWidget::setImage(const QString &path, bool force)
+void PaintedWidget::setImage(const QString& path, bool force)
 {
     QPixmap image;
     image.load("dump.png");
-    resize(image.size().width() / 2, image.size().height() / 2);
+    resize(image.size().width(), image.size().height());
 
-    if (m_image != path) {
+    if (m_image != path)
+    {
         m_image = path;
     }
 
-    if (m_image != path || force) {
+    if (m_image != path || force)
+    {
         update();
     }
 }
 
-void PaintedWidget::setItemRect(const QRect &rect)
+void PaintedWidget::setItemRect(const QRect& rect)
 {
-    if (m_itemRect == rect) {
+    if (m_itemRect == rect)
+    {
         return;
     }
 
@@ -42,11 +48,12 @@ void PaintedWidget::setItemRect(const QRect &rect)
     update();
 }
 
-void PaintedWidget::setClickPoint(const QPointF &point)
+void PaintedWidget::setClickPoint(const QPointF& point)
 {
     qDebug() << Q_FUNC_INFO << point;
 
-    if (m_scaledPoint == point) {
+    if (m_scaledPoint == point)
+    {
         return;
     }
     m_scaledPoint = point;
@@ -60,7 +67,7 @@ QPointF PaintedWidget::scaledClickPoint()
     return m_clickPoint;
 }
 
-void PaintedWidget::paintEvent(QPaintEvent *e)
+void PaintedWidget::paintEvent(QPaintEvent* e)
 {
     QPainter painter(this);
 
@@ -69,8 +76,12 @@ void PaintedWidget::paintEvent(QPaintEvent *e)
     m_ratio = e->rect().width() / (float)image.width();
     m_scaledPoint.setX(m_clickPoint.x() * m_ratio);
     m_scaledPoint.setY(m_clickPoint.y() * m_ratio);
-//    image = image.scaled(image.width() / 2, image.height() / 2, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    image = image.scaled(e->rect().width(), image.height() * m_ratio, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    //    image = image.scaled(image.width() / 2, image.height() / 2, Qt::KeepAspectRatio,
+    //    Qt::SmoothTransformation);
+    image = image.scaled(e->rect().width(),
+                         image.height() * m_ratio,
+                         Qt::IgnoreAspectRatio,
+                         Qt::SmoothTransformation);
 
     painter.drawPixmap(0, 0, image);
 
@@ -78,8 +89,12 @@ void PaintedWidget::paintEvent(QPaintEvent *e)
     font.setPixelSize(8);
     painter.setFont(font);
 
-    if (!m_itemRect.isNull()) {
-        QRectF itemRect(m_itemRect.x() * m_ratio, m_itemRect.y() * m_ratio, m_itemRect.width() * m_ratio, m_itemRect.height() * m_ratio);
+    if (!m_itemRect.isNull())
+    {
+        QRectF itemRect(m_itemRect.x() * m_ratio,
+                        m_itemRect.y() * m_ratio,
+                        m_itemRect.width() * m_ratio,
+                        m_itemRect.height() * m_ratio);
 
         // draw rect frame
         painter.setOpacity(0.4);
@@ -93,7 +108,11 @@ void PaintedWidget::paintEvent(QPaintEvent *e)
 
         itemRect.adjust(1, 1, 0, 0);
 
-        QString text = QStringLiteral(" %1:%2 %3:%4 ").arg(m_itemRect.x()).arg(m_itemRect.y()).arg(m_itemRect.width()).arg(m_itemRect.height());
+        QString text = QStringLiteral(" %1:%2 %3:%4 ")
+                           .arg(m_itemRect.x())
+                           .arg(m_itemRect.y())
+                           .arg(m_itemRect.width())
+                           .arg(m_itemRect.height());
         QSize fontSize = painter.fontMetrics().size(Qt::TextSingleLine, text);
         const QRectF textRect{itemRect.topLeft(), QSizeF(fontSize)};
 
@@ -109,9 +128,10 @@ void PaintedWidget::paintEvent(QPaintEvent *e)
         painter.drawText(textRect, Qt::AlignCenter, text);
     }
 
-    if (!m_clickPoint.isNull()) {
-        QString text = QStringLiteral(" %1:%2 ").arg((int)(m_clickPoint.x()))
-                                                .arg((int)(m_clickPoint.y()));
+    if (!m_clickPoint.isNull())
+    {
+        QString text =
+            QStringLiteral(" %1:%2 ").arg((int)(m_clickPoint.x())).arg((int)(m_clickPoint.y()));
         QSize fontSize = painter.fontMetrics().size(Qt::TextSingleLine, text);
         const QRectF textRect{m_scaledPoint, QSizeF(fontSize)};
 
