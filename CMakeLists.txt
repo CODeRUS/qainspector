@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(qainspector-cmake VERSION 0.1 LANGUAGES CXX)
+project(QAInspector VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -21,8 +21,17 @@ find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
 
 file(GLOB_RECURSE PROJECT_SOURCES *.h *.cpp)
 
+set(MACOSX_BUNDLE_ICON_FILE application.icns)
+set(MACOSX_BUNDLE_BUNDLE_NAME "QA Inspector")
+set(APP_ICON_MACOSX ${CMAKE_CURRENT_SOURCE_DIR}/application.icns)
+set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES
+      MACOSX_PACKAGE_LOCATION "Resources")
+
 add_executable(qainspector-cmake
-    ${PROJECT_SOURCES})
+    MACOSX_BUNDLE
+    ${PROJECT_SOURCES}
+    ${APP_ICON_MACOSX}
+)
 
 #target_link_libraries(${PROJECT_NAME} LINK_PUBLIC Qt5::QuickControls2 Qt5::Network Qt5::Quick Qt5::Core Qt5::Xml Qt5::XmlPatterns Qt5::Widgets)
 
