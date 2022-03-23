@@ -124,9 +124,10 @@ QLayout* TreeViewDialog::createTopLayout()
                 {
                     model->loadDump(data);
                 }
-                if (socket->getGrabWindow())
+                const QByteArray screenshot = socket->getGrabWindow();
+                if (screenshot.size() > 0)
                 {
-                    paintedWidget->setImage("dump.png", true);
+                    paintedWidget->setImageData(screenshot);
                 }
             });
     //    connect(dumpTreeButton,
@@ -176,26 +177,13 @@ QLayout* TreeViewDialog::createDeviceLayout()
     auto deviceLayout = new QVBoxLayout;
 
     paintedWidget = new PaintedWidget(this);
-    paintedWidget->setImage("dump.png");
     paintedWidget->installEventFilter(this);
 
     deviceLayout->addWidget(paintedWidget);
 
-    auto refreshButton = new QPushButton(tr("Refresh"), this);
-    connect(refreshButton,
-            &QPushButton::released,
-            [=]() { paintedWidget->setImage("dump.png", true); });
-    refreshButton->setFixedWidth(100);
-    refreshButton->setVisible(false);
-    deviceLayout->addWidget(refreshButton);
-
     deviceLayout->setSpacing(1);
     deviceLayout->setSizeConstraint(QLayout::SizeConstraint::SetFixedSize);
     deviceLayout->setAlignment(Qt::AlignTop);
-
-    connect(socket,
-            &SocketConnector::connectedChanged,
-            [=](bool isSocketConnected) { refreshButton->setVisible(isSocketConnected); });
 
     return deviceLayout;
 }

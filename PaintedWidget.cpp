@@ -1,6 +1,7 @@
 // Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #include "PaintedWidget.hpp"
 
+#include <QBuffer>
 #include <QDebug>
 #include <QPaintEvent>
 #include <QPainter>
@@ -23,18 +24,22 @@ PaintedWidget::PaintedWidget(QWidget* parent)
 void PaintedWidget::setImage(const QString& path, bool force)
 {
     QPixmap image;
-    image.load("dump.png");
+    image.load(path);
     resize(image.size().width(), image.size().height());
 
-    if (m_image != path)
-    {
-        m_image = path;
-    }
+    m_imageData.clear();
+    QBuffer buffer(&m_imageData);
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "PNG");
 
-    if (m_image != path || force)
-    {
-        update();
-    }
+    update();
+}
+
+void PaintedWidget::setImageData(const QByteArray& data)
+{
+    m_imageData = data;
+
+    update();
 }
 
 void PaintedWidget::setItemRect(const QRect& rect)
@@ -72,7 +77,7 @@ void PaintedWidget::paintEvent(QPaintEvent* e)
     QPainter painter(this);
 
     QPixmap image;
-    image.load("dump.png");
+    image.loadFromData(m_imageData, "PNG");
     m_ratio = e->rect().width() / (float)image.width();
     m_scaledPoint.setX(m_clickPoint.x() * m_ratio);
     m_scaledPoint.setY(m_clickPoint.y() * m_ratio);
@@ -101,7 +106,7 @@ void PaintedWidget::paintEvent(QPaintEvent* e)
 
         QPen pen;
         pen.setWidth(1);
-        pen.setColor(Qt::white);
+        pen.setColor(Qt::black);
         painter.setPen(pen);
         painter.setBrush(Qt::NoBrush);
         painter.drawRect(itemRect);
@@ -118,13 +123,13 @@ void PaintedWidget::paintEvent(QPaintEvent* e)
 
         // draw rect background
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Qt::black);
+        painter.setBrush(Qt::white);
         painter.drawRect(textRect);
 
         // draw rect text
         painter.setOpacity(1.0);
 
-        painter.setPen(Qt::white);
+        painter.setPen(Qt::black);
         painter.drawText(textRect, Qt::AlignCenter, text);
     }
 
@@ -140,15 +145,15 @@ void PaintedWidget::paintEvent(QPaintEvent* e)
 
         QPen pen;
         pen.setWidth(2);
-        pen.setColor(Qt::lightGray);
+        pen.setColor(Qt::white);
         painter.setPen(pen);
-        painter.setBrush(Qt::black);
+        painter.setBrush(Qt::white);
         painter.drawRect(textRect);
 
         // draw click text
         painter.setOpacity(1.0);
 
-        painter.setPen(Qt::white);
+        painter.setPen(Qt::black);
         painter.drawText(textRect, Qt::AlignCenter, text);
 
         // draw click point
