@@ -343,10 +343,12 @@ void TreeViewDialog::selectSearchResult(const QModelIndex& index)
 
 void TreeViewDialog::onContextMenuRequested(const QPoint&)
 {
-    ItemInfoDialog info;
-    info.setWindowTitle(tr("properties list"));
-    info.setData(model->getData(treeView->currentIndex()));
-    info.exec();
+    auto* dialog = new ItemInfoDialog(this);
+    dialog->setWindowTitle(tr("properties list"));
+    dialog->setData(model->getData(treeView->currentIndex()));
+    dialog->setModal(true);
+    dialog->show();
+    connect(dialog, &QDialog::finished, this, [dialog](int result) { dialog->deleteLater(); });
 }
 
 bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)

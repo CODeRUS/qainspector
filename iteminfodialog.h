@@ -11,14 +11,14 @@ class ItemInfoDialog : public QDialog
 {
     Q_OBJECT
 public:
-    ItemInfoDialog();
+    explicit ItemInfoDialog(QWidget* parent = nullptr);
 
 public slots:
-    void setData(const QJsonObject &object);
+    void setData(const QJsonObject& object);
 
 protected:
-    bool eventFilter(QObject *o, QEvent *e) override;
-    void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject* o, QEvent* e) override;
+    void closeEvent(QCloseEvent* event) override;
 };
 
 #endif // ITEMINFODIALOG_H
