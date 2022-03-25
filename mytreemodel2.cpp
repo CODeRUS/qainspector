@@ -17,10 +17,10 @@ MyTreeModel2::MyTreeModel2(QObject* parent)
     : QAbstractItemModel(parent)
 {
     headers.append("classname");
+    headers.append("objectName");
+    headers.append("mainTextProperty");
     headers.append("abs_x");
     headers.append("abs_y");
-    headers.append("mainTextProperty");
-    headers.append("objectName");
     headers.append("enabled");
     headers.append("visible");
     headers.append("width");
