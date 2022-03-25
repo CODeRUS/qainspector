@@ -6,6 +6,7 @@
 #include <QEvent>
 #include <QJsonObject>
 #include <QScrollArea>
+#include <QVBoxLayout>
 
 class ItemInfoDialog : public QDialog
 {
@@ -19,6 +20,9 @@ public slots:
 protected:
     bool eventFilter(QObject* o, QEvent* e) override;
     void closeEvent(QCloseEvent* event) override;
+
+private:
+    QVBoxLayout* formLayout = nullptr;
 };
 
 #endif // ITEMINFODIALOG_H

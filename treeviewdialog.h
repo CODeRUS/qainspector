@@ -2,11 +2,12 @@
 #ifndef TREEVIEWDIALOG_H
 #define TREEVIEWDIALOG_H
 
-#include <QObject>
-#include <QDialog>
-#include <QPushButton>
 #include "PaintedWidget.hpp"
 #include "mytreemodel2.h"
+#include <ItemInfoDialog.h>
+#include <QDialog>
+#include <QObject>
+#include <QPushButton>
 
 class QTreeView;
 class QAbstractItemModel;
@@ -21,11 +22,11 @@ class MyPushButton : public QPushButton
 {
     Q_OBJECT
 public:
-    explicit MyPushButton(QWidget *parent = nullptr);
-    explicit MyPushButton(const QString &text, QWidget *parent = nullptr);
+    explicit MyPushButton(QWidget* parent = nullptr);
+    explicit MyPushButton(const QString& text, QWidget* parent = nullptr);
 
 protected:
-    void mousePressEvent(QMouseEvent *event);
+    void mousePressEvent(QMouseEvent* event);
 
 signals:
     void shiftClicked();
@@ -41,36 +42,42 @@ public slots:
     void init();
 
 signals:
-    void search(const QString &searchStr, const QString &key, bool partialSearch, const QModelIndex &currentIndex, TreeItem2 *node = nullptr);
+    void search(const QString& searchStr,
+                const QString& key,
+                bool partialSearch,
+                const QModelIndex& currentIndex,
+                TreeItem2* node = nullptr);
 
 private slots:
-    void selectSearchResult(const QModelIndex &index);
+    void selectSearchResult(const QModelIndex& index);
 
-    void onContextMenuRequested(const QPoint &);
+    void onContextMenuRequested(const QPoint&);
 
     bool eventFilter(QObject* obj, QEvent* event) override;
 
 private:
     void reloadImage();
 
-    QLayout *createTopLayout();
-    QLayout *createDeviceLayout();
-    QLayout *createSearchLayout();
+    QLayout* createTopLayout();
+    QLayout* createDeviceLayout();
+    QLayout* createSearchLayout();
 
-    MyTreeModel2 *model;
+    MyTreeModel2* model;
 
-    QTreeView *treeView;
-    QLineEdit *searchLineEdit;
-    QCheckBox *partialCheckBox;
-    PaintedWidget *paintedWidget;
+    QTreeView* treeView;
+    QLineEdit* searchLineEdit;
+    QCheckBox* partialCheckBox;
+    PaintedWidget* paintedWidget;
 
-    QSettings *settings;
+    QSettings* settings;
 
-    SocketConnector *socket;
+    SocketConnector* socket;
     MyTreeModel2::SearchType searchType{MyTreeModel2::SearchType::ClassName};
 
+    ItemInfoDialog* dialog = nullptr;
+
 protected:
-    void closeEvent(QCloseEvent *event) override;
+    void closeEvent(QCloseEvent* event) override;
 };
 
 #endif // TREEVIEWDIALOG_H
