@@ -39,14 +39,16 @@ TreeViewDialog::TreeViewDialog()
     model = new MyTreeModel2;
     treeView->setModel(model);
     treeView->setColumnWidth(0, 300);
-    treeView->setColumnWidth(1, 50);
-    treeView->setColumnWidth(2, 50);
-    treeView->setColumnWidth(3, 300);
-    treeView->setColumnWidth(4, 200);
+    treeView->setColumnWidth(1, 300);
+    treeView->setColumnWidth(2, 200);
+    treeView->setColumnWidth(3, 50);
+    treeView->setColumnWidth(4, 50);
     treeView->setColumnWidth(5, 50);
     treeView->setColumnWidth(6, 50);
     treeView->setColumnWidth(7, 50);
     treeView->setColumnWidth(8, 50);
+
+    treeView->header()->restoreState(settings->value("treeheader/state").toByteArray());
 
     connect(treeView,
             &QTreeView::customContextMenuRequested,
@@ -54,6 +56,7 @@ TreeViewDialog::TreeViewDialog()
             &TreeViewDialog::onContextMenuRequested);
     connect(treeView->selectionModel(),
             &QItemSelectionModel::currentChanged,
+            this,
             [this](const QModelIndex& current, const QModelIndex&)
             { paintedWidget->setItemRect(model->getRect(current)); });
 
@@ -66,6 +69,7 @@ QLayout* TreeViewDialog::createTopLayout()
     auto ipLineEdit = new QLineEdit(this);
     connect(ipLineEdit,
             &QLineEdit::textChanged,
+            this,
             [&](const QString& text)
             {
                 settings->setValue(QStringLiteral("connection/host"), text);
@@ -75,12 +79,16 @@ QLayout* TreeViewDialog::createTopLayout()
     ipLineEdit->setText(
         settings->value(QStringLiteral("connection/host"), ipLineEdit->placeholderText())
             .toString());
-    //    ipLineEdit->setFixedWidth(80);
     connectionLayout->addWidget(ipLineEdit);
 
     auto portLineEdit = new QLineEdit(this);
+    connect(ipLineEdit,
+            &QLineEdit::returnPressed,
+            this,
+            [portLineEdit]() { portLineEdit->setFocus(Qt::TabFocusReason); });
     connect(portLineEdit,
             &QLineEdit::textChanged,
+            this,
             [&](const QString& text)
             {
                 settings->setValue(QStringLiteral("connection/port"), text);
@@ -90,104 +98,56 @@ QLayout* TreeViewDialog::createTopLayout()
     portLineEdit->setText(
         settings->value(QStringLiteral("connection/port"), portLineEdit->placeholderText())
             .toString());
-    //    portLineEdit->setFixedWidth(50);
     connectionLayout->addWidget(portLineEdit);
 
-    //    auto appNameLineEdit = new QLineEdit(this);
-    //    connect(appNameLineEdit,
-    //            &QLineEdit::textChanged,
-    //            [&](const QString& text)
-    //            {
-    //                settings->setValue(QStringLiteral("application/name"), text);
-    //                socket->setProperty("applicationName", text);
-    //            });
-    //    appNameLineEdit->setPlaceholderText("application-name");
-    //    appNameLineEdit->setText(
-    //        settings->value(QStringLiteral("application/name"),
-    //        appNameLineEdit->placeholderText())
-    //            .toString());
-    //        appNameLineEdit->setFixedWidth(108);
-    //    connectionLayout->addWidget(appNameLineEdit);
-
     auto connectButton = new QPushButton(tr("Connect"), this);
+    connectButton->setAutoDefault(true);
+    connectButton->setFocusPolicy(Qt::StrongFocus);
+    connect(portLineEdit,
+            &QLineEdit::returnPressed,
+            this,
+            [connectButton]() { connectButton->setFocus(Qt::TabFocusReason); });
     connect(connectButton,
-            &QPushButton::released,
+            &QPushButton::clicked,
+            this,
             [=]() { socket->setConnected(!socket->isConnected()); });
-    //    connectButton->setFixedWidth(80);
     connectionLayout->addWidget(connectButton);
 
     auto dumpTreeButton = new QPushButton(tr("Dump tree"), this);
-    connect(dumpTreeButton,
-            &QPushButton::clicked,
-            [=]()
-            {
-                const QString data = socket->getDumpTree();
-                if (!data.isEmpty())
-                {
-                    model->loadDump(data);
-                }
-                const QByteArray screenshot = socket->getGrabWindow();
-                if (screenshot.size() > 0)
-                {
-                    paintedWidget->setImageData(screenshot);
-                }
-            });
-    //    connect(dumpTreeButton,
-    //            &MyPushButton::shiftClicked,
-    //            [=]()
-    //            {
-    //                QEventLoop loop;
-    //                QTimer::singleShot(3000, &loop, &QEventLoop::quit);
-    //                loop.exec();
-
-    //                const QString data = socket->getDumpTree();
-    //                if (!data.isEmpty())
-    //                {
-    //                    model->loadDump(data);
-    //                }
-    //                if (socket->getGrabWindow())
-    //                {
-    //                    paintedWidget->setImage("dump.png", true);
-    //                }
-    //            });
+    dumpTreeButton->setFocusPolicy(Qt::StrongFocus);
+    connect(dumpTreeButton, &QPushButton::clicked, this, [this]() { dumpTree(); });
     dumpTreeButton->setVisible(false);
-    //    dumpTreeButton->setFixedWidth(80);
     connectionLayout->addWidget(dumpTreeButton);
 
     auto expandAllButton = new QPushButton(tr("Expand all"), this);
-    connect(expandAllButton, &QPushButton::clicked, [=]() { treeView->expandAll(); });
+    expandAllButton->setFocusPolicy(Qt::StrongFocus);
+    connect(expandAllButton, &QPushButton::clicked, this, [=]() { treeView->expandAll(); });
     expandAllButton->setVisible(false);
-    //    expandAllButton->setFixedWidth(80);
     connectionLayout->addWidget(expandAllButton);
+
+    connectionLayout->setStretch(0, 2);
 
     connect(socket,
             &SocketConnector::connectedChanged,
+            this,
             [=](bool isSocketConnected)
             {
                 connectButton->setText(isSocketConnected ? tr("Disconnect") : tr("Connect"));
                 dumpTreeButton->setVisible(isSocketConnected);
                 expandAllButton->setVisible(isSocketConnected);
+
+                if (isSocketConnected)
+                {
+                    dumpTree();
+                }
             });
 
     connectionLayout->setAlignment(Qt::AlignLeft);
 
+    QTimer::singleShot(
+        1, this, [ipLineEdit]() { ipLineEdit->setFocus(Qt::ActiveWindowFocusReason); });
+
     return connectionLayout;
-}
-
-QLayout* TreeViewDialog::createDeviceLayout()
-{
-    auto deviceLayout = new QVBoxLayout;
-
-    paintedWidget = new PaintedWidget(this);
-    paintedWidget->installEventFilter(this);
-
-    deviceLayout->addWidget(paintedWidget);
-
-    deviceLayout->setSpacing(1);
-    deviceLayout->setSizeConstraint(QLayout::SizeConstraint::SetFixedSize);
-    deviceLayout->setAlignment(Qt::AlignTop);
-
-    return deviceLayout;
 }
 
 QLayout* TreeViewDialog::createSearchLayout()
@@ -196,24 +156,34 @@ QLayout* TreeViewDialog::createSearchLayout()
     searchLineEdit = new QLineEdit;
     searchLineEdit->setPlaceholderText("Search pattern");
     partialCheckBox = new QCheckBox(tr("Partial"));
+    partialCheckBox->setFocusPolicy(Qt::StrongFocus);
 
     auto groupBox = new QGroupBox;
     auto groupBoxLayout = new QHBoxLayout;
     auto classNameButton = new QRadioButton("ClassName");
+    classNameButton->setFocusPolicy(Qt::StrongFocus);
     classNameButton->setChecked(true);
     connect(classNameButton,
             &QRadioButton::clicked,
+            this,
             [&]() { searchType = MyTreeModel2::SearchType::ClassName; });
     auto textButton = new QRadioButton("Text");
-    connect(
-        textButton, &QRadioButton::clicked, [&]() { searchType = MyTreeModel2::SearchType::Text; });
+    textButton->setFocusPolicy(Qt::StrongFocus);
+    connect(textButton,
+            &QRadioButton::clicked,
+            this,
+            [&]() { searchType = MyTreeModel2::SearchType::Text; });
     auto objectNameButton = new QRadioButton("ObjectName");
+    objectNameButton->setFocusPolicy(Qt::StrongFocus);
     connect(objectNameButton,
             &QRadioButton::clicked,
+            this,
             [&]() { searchType = MyTreeModel2::SearchType::ObjectName; });
     auto xPathButton = new QRadioButton("XPath");
+    xPathButton->setFocusPolicy(Qt::StrongFocus);
     connect(xPathButton,
             &QRadioButton::clicked,
+            this,
             [&]() { searchType = MyTreeModel2::SearchType::XPath; });
     groupBoxLayout->addWidget(classNameButton);
     groupBoxLayout->addWidget(textButton);
@@ -222,8 +192,10 @@ QLayout* TreeViewDialog::createSearchLayout()
     groupBox->setLayout(groupBoxLayout);
 
     auto searchButton = new QPushButton(tr("Search"));
+    searchButton->setFocusPolicy(Qt::StrongFocus);
     connect(searchButton,
             &QPushButton::clicked,
+            this,
             [&](bool)
             {
                 auto result = model->searchIndex(searchType,
@@ -238,6 +210,7 @@ QLayout* TreeViewDialog::createSearchLayout()
     QShortcut* searchShortcut = new QShortcut(QKeySequence("F3"), this);
     connect(searchShortcut,
             &QShortcut::activated,
+            this,
             [&]()
             {
                 auto result = model->searchIndex(searchType,
@@ -252,6 +225,7 @@ QLayout* TreeViewDialog::createSearchLayout()
     QShortcut* openSearchShortcut = new QShortcut(QKeySequence("Ctrl+F"), this);
     connect(openSearchShortcut,
             &QShortcut::activated,
+            this,
             [&]() { searchLineEdit->setFocus(Qt::ShortcutFocusReason); });
 
     searchLayout->addWidget(searchLineEdit);
@@ -261,6 +235,7 @@ QLayout* TreeViewDialog::createSearchLayout()
 
     connect(model,
             &QAbstractItemModel::modelReset,
+            this,
             [=]() { searchButton->setEnabled(model->rowCount() > 0); });
     searchButton->setEnabled(false);
 
@@ -269,12 +244,13 @@ QLayout* TreeViewDialog::createSearchLayout()
 
 void TreeViewDialog::closeEvent(QCloseEvent* event)
 {
-    if (dialog->isVisible())
+    if (dialog && dialog->isVisible())
     {
         dialog->close();
     }
 
     settings->setValue("window/geometry", saveGeometry());
+    settings->setValue("treeheader/state", treeView->header()->saveState());
     QWidget::closeEvent(event);
 }
 
@@ -284,11 +260,10 @@ void TreeViewDialog::init()
     formLayout->addLayout(createTopLayout());
 
     auto leftFrame = new QFrame();
-    auto leftWidget = new QWidget(leftFrame);
-    auto device = createDeviceLayout();
-    leftWidget->setLayout(device);
+
+    paintedWidget = new PaintedWidget(leftFrame);
+    paintedWidget->installEventFilter(this);
     leftFrame->setMinimumWidth(100);
-    //    leftFrame->setMaximumWidth(paintedWidget->width());
 
     treeView->setMinimumWidth(100);
 
@@ -304,6 +279,7 @@ void TreeViewDialog::init()
 
     connect(splitter,
             &QSplitter::splitterMoved,
+            this,
             [splitter, this](int, int)
             { settings->setValue("splitterSizes", splitter->saveState()); });
 
@@ -314,8 +290,11 @@ void TreeViewDialog::init()
     setLayout(formLayout);
 
     QFile file("dump.json");
-    file.open(QIODevice::ReadOnly);
-    model->loadDump(file.readAll());
+    if (file.exists())
+    {
+        file.open(QIODevice::ReadOnly);
+        model->loadDump(file.readAll());
+    }
 }
 
 void expandChildren(const QModelIndex& index, QTreeView* view)
@@ -377,8 +356,18 @@ bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)
     return QObject::eventFilter(obj, event);
 }
 
-void TreeViewDialog::reloadImage()
+void TreeViewDialog::dumpTree()
 {
+    const QString data = socket->getDumpTree();
+    if (!data.isEmpty())
+    {
+        model->loadDump(data);
+    }
+    const QByteArray screenshot = socket->getGrabWindow();
+    if (screenshot.size() > 0)
+    {
+        paintedWidget->setImageData(screenshot);
+    }
 }
 
 MyPushButton::MyPushButton(QWidget* parent)

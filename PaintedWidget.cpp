@@ -13,26 +13,12 @@ PaintedWidget::PaintedWidget(QWidget* parent)
     image.load("dump.png");
     if (image.isNull())
     {
-        setFixedSize(640, 480);
+        setFixedSize(1024, 768);
     }
     else
     {
         setFixedSize(image.size().width(), image.size().height());
     }
-}
-
-void PaintedWidget::setImage(const QString& path, bool force)
-{
-    QPixmap image;
-    image.load(path);
-    resize(image.size().width(), image.size().height());
-
-    m_imageData.clear();
-    QBuffer buffer(&m_imageData);
-    buffer.open(QIODevice::WriteOnly);
-    image.save(&buffer, "PNG");
-
-    update();
 }
 
 void PaintedWidget::setImageData(const QByteArray& data)
@@ -78,15 +64,13 @@ void PaintedWidget::paintEvent(QPaintEvent* e)
 
     QPixmap image;
     image.loadFromData(m_imageData, "PNG");
+    resize(image.size());
+    setMaximumSize(image.size());
     m_ratio = e->rect().width() / (float)image.width();
     m_scaledPoint.setX(m_clickPoint.x() * m_ratio);
     m_scaledPoint.setY(m_clickPoint.y() * m_ratio);
-    //    image = image.scaled(image.width() / 2, image.height() / 2, Qt::KeepAspectRatio,
-    //    Qt::SmoothTransformation);
-    image = image.scaled(e->rect().width(),
-                         image.height() * m_ratio,
-                         Qt::IgnoreAspectRatio,
-                         Qt::SmoothTransformation);
+    image = image.scaled(
+        e->rect().width(), image.height() * m_ratio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     painter.drawPixmap(0, 0, image);
 

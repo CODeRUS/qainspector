@@ -10,7 +10,6 @@ public:
     explicit PaintedWidget(QWidget *parent = nullptr);
 
 public slots:
-    void setImage(const QString &path, bool force = false);
     void setImageData(const QByteArray &data);
     void setItemRect(const QRect &rect);
     void setClickPoint(const QPointF &point);
