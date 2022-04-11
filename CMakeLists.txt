@@ -27,7 +27,7 @@ set(APP_ICON_MACOSX ${CMAKE_CURRENT_SOURCE_DIR}/application.icns)
 set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES
       MACOSX_PACKAGE_LOCATION "Resources")
 
-add_executable(qainspector-cmake
+add_executable(qainspector
     MACOSX_BUNDLE
     ${PROJECT_SOURCES}
     ${APP_ICON_MACOSX}
@@ -35,7 +35,7 @@ add_executable(qainspector-cmake
 
 #target_link_libraries(${PROJECT_NAME} LINK_PUBLIC Qt5::QuickControls2 Qt5::Network Qt5::Quick Qt5::Core Qt5::Xml Qt5::XmlPatterns Qt5::Widgets)
 
-target_link_libraries(qainspector-cmake
+target_link_libraries(qainspector
     PRIVATE
     Qt5::Core
     Qt5::Network
@@ -44,7 +44,7 @@ target_link_libraries(qainspector-cmake
     Qt5::Widgets
 )
 
-set_target_properties(qainspector-cmake PROPERTIES
+set_target_properties(qainspector PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
