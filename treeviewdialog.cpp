@@ -29,7 +29,7 @@
 TreeViewDialog::TreeViewDialog()
 {
     socket = new SocketConnector(this);
-    settings = new QSettings(QStringLiteral("qainspector.ini"), QSettings::IniFormat, this);
+    settings = new QSettings(this);
 
     treeView = new QTreeView(this);
     treeView->setSelectionMode(QAbstractItemView::SingleSelection);

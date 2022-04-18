@@ -23,7 +23,7 @@ ItemInfoDialog::ItemInfoDialog(QWidget* parent)
 
     setLayout(hlayout);
 
-    auto settings = new QSettings(QStringLiteral("qainspector.ini"), QSettings::IniFormat, this);
+    settings = new QSettings(this);
     restoreGeometry(settings->value("properties/geometry").toByteArray());
 }
 
@@ -71,7 +71,6 @@ bool ItemInfoDialog::eventFilter(QObject* o, QEvent* e)
 
 void ItemInfoDialog::closeEvent(QCloseEvent* event)
 {
-    auto settings = new QSettings(QStringLiteral("qainspector.ini"), QSettings::IniFormat, this);
     settings->setValue("properties/geometry", saveGeometry());
     QDialog::closeEvent(event);
 }

@@ -2,12 +2,13 @@
 #ifndef TREEVIEWDIALOG_H
 #define TREEVIEWDIALOG_H
 
-#include "PaintedWidget.hpp"
-#include "mytreemodel2.h"
-#include <ItemInfoDialog.h>
 #include <QDialog>
 #include <QObject>
 #include <QPushButton>
+
+#include "ItemInfoDialog.h"
+#include "PaintedWidget.hpp"
+#include "mytreemodel2.h"
 
 class QTreeView;
 class QAbstractItemModel;
