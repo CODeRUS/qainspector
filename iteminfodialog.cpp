@@ -27,10 +27,29 @@ ItemInfoDialog::ItemInfoDialog(QWidget* parent)
     restoreGeometry(settings->value("properties/geometry").toByteArray());
 }
 
+void clearLayout(QLayout* layout)
+{
+    if (!layout)
+    {
+        return;
+    }
+    while (auto* item = layout->takeAt(0))
+    {
+        if (QWidget* widget = item->widget())
+        {
+            widget->deleteLater();
+        }
+        if (QLayout* childLayout = item->layout())
+        {
+            clearLayout(childLayout);
+        }
+        delete item;
+    }
+}
+
 void ItemInfoDialog::setData(const QJsonObject& object)
 {
-    while (auto* item = formLayout->takeAt(0))
-        delete item;
+    clearLayout(formLayout);
 
     for (auto it = object.constBegin(); it != object.constEnd(); it++)
     {
