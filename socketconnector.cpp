@@ -148,3 +148,56 @@ QByteArray SocketConnector::getGrabWindow()
     }
     return {};
 }
+
+void SocketConnector::mousePressed(const QPoint &p)
+{
+    m_points = {p};
+    m_timer.start();
+}
+
+void SocketConnector::mouseReleased(const QPoint &p)
+{
+    qint64 elapsed = m_timer.elapsed();
+
+    QByteArray data;
+
+    if (m_points.size() == 1) {
+        QString action = QStringLiteral("app:click");
+        if (elapsed > 700) {
+            action = QStringLiteral("app:pressAndHold");
+        }
+        QJsonObject json;
+        json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
+        json.insert(QStringLiteral("action"), QJsonValue(QStringLiteral("execute")));
+        json.insert(
+            QStringLiteral("params"),
+            QJsonValue::fromVariant(QVariantList{action, QVariantList{p.x(), p.y()}}));
+        data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+    } else {
+        QPoint fp = m_points.first();
+
+        QJsonObject json;
+        json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
+        json.insert(QStringLiteral("action"), QJsonValue(QStringLiteral("execute")));
+        json.insert(
+            QStringLiteral("params"),
+            QJsonValue::fromVariant(QVariantList{QStringLiteral("app:move"), QVariantList{fp.x(), fp.y(), p.x(), p.y()}}));
+        data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+    }
+
+    if (data.isEmpty()) {
+        return;
+    }
+
+    m_socket->write(data);
+    m_socket->write("\n", 1);
+    m_socket->waitForBytesWritten();
+
+    m_socket->waitForReadyRead(5000);
+    m_socket->readAll();
+}
+
+void SocketConnector::mouseMoved(const QPoint &p)
+{
+    m_points.append(p);
+}

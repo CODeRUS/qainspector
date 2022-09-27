@@ -499,6 +499,8 @@ QModelIndex MyTreeModel2::searchByCoordinates(qreal posx, qreal posy, TreeItem2*
             classname != QLatin1String("QQuickShaderEffect") &&
             classname != QLatin1String("QQuickOverlay") &&
             classname != QLatin1String("QQuickRectangle") &&
+            classname != QLatin1String("QQuickMouseArea") &&
+            classname != QLatin1String("InformationManager") &&
             classname != QLatin1String("QQuickShaderEffectSource") &&
             classname != QLatin1String("HwcImage") &&
             !classname.endsWith(QLatin1String("Gradient")) && posx >= itemx &&

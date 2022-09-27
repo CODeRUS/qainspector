@@ -343,13 +343,47 @@ bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)
 {
     if (event->type() == QEvent::MouseButtonPress)
     {
-        QMouseEvent* me = static_cast<QMouseEvent*>(event);
-        paintedWidget->setClickPoint(me->localPos());
+        QMouseEvent* me = dynamic_cast<QMouseEvent*>(event);
+        if (!me) {
+            return QObject::eventFilter(obj, event);
+        }
+        QPoint point = me->localPos().toPoint();
 
-        QModelIndex index = model->searchByCoordinates(paintedWidget->scaledClickPoint());
-        if (index.isValid())
-        {
-            selectSearchResult(index);
+        if (me->button() == Qt::LeftButton) {
+            paintedWidget->setClickPoint(point);
+
+            QModelIndex index = model->searchByCoordinates(paintedWidget->scaledClickPoint());
+            if (index.isValid())
+            {
+                selectSearchResult(index);
+            }
+        } else {
+            QPoint scaledPoint(point.x() / paintedWidget->scaleRatio(), point.y() / paintedWidget->scaleRatio());
+            socket->mousePressed(scaledPoint);
+        }
+    } else if (event->type() == QEvent::MouseButtonRelease) {
+        QMouseEvent* me = dynamic_cast<QMouseEvent*>(event);
+        if (!me) {
+            return QObject::eventFilter(obj, event);
+        }
+        QPoint point = me->localPos().toPoint();
+
+        if (me->button() == Qt::RightButton) {
+            QPoint scaledPoint(point.x() / paintedWidget->scaleRatio(), point.y() / paintedWidget->scaleRatio());
+            socket->mouseReleased(scaledPoint);
+            QTimer::singleShot(300, this, &TreeViewDialog::dumpScreenshot);
+        }
+
+    } else if (event->type() == QEvent::MouseMove) {
+        QMouseEvent* me = dynamic_cast<QMouseEvent*>(event);
+        if (!me) {
+            return QObject::eventFilter(obj, event);
+        }
+        QPoint point = me->localPos().toPoint();
+
+        if (me->buttons() & Qt::RightButton) {
+            QPoint scaledPoint(point.x() / paintedWidget->scaleRatio(), point.y() / paintedWidget->scaleRatio());
+            socket->mouseMoved(scaledPoint);
         }
     }
 
@@ -363,11 +397,20 @@ void TreeViewDialog::dumpTree()
     {
         model->loadDump(data);
     }
+    dumpScreenshot();
+}
+
+void TreeViewDialog::dumpScreenshot()
+{
     const QByteArray screenshot = socket->getGrabWindow();
     if (screenshot.size() > 0)
     {
         paintedWidget->setImageData(screenshot);
     }
+
+//    if (socket->isConnected()) {
+//        QTimer::singleShot(100, this, &TreeViewDialog::dumpScreenshot);
+//    }
 }
 
 MyPushButton::MyPushButton(QWidget* parent)

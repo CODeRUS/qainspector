@@ -15,6 +15,8 @@ public slots:
     void setClickPoint(const QPointF &point);
     QPointF scaledClickPoint();
 
+    float scaleRatio();
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 

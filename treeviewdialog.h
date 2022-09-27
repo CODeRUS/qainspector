@@ -6,7 +6,7 @@
 #include <QObject>
 #include <QPushButton>
 
-#include "ItemInfoDialog.h"
+#include "iteminfodialog.h"
 #include "PaintedWidget.hpp"
 #include "mytreemodel2.h"
 
@@ -56,8 +56,10 @@ private slots:
 
     bool eventFilter(QObject* obj, QEvent* event) override;
 
-private:
     void dumpTree();
+    void dumpScreenshot();
+
+private:
 
     QLayout* createTopLayout();
     QLayout* createSearchLayout();
