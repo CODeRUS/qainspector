@@ -113,9 +113,10 @@ QLayout* TreeViewDialog::createTopLayout()
             [=]() { socket->setConnected(!socket->isConnected()); });
     connectionLayout->addWidget(connectButton);
 
-    auto dumpTreeButton = new QPushButton(tr("Dump tree"), this);
+    auto dumpTreeButton = new MyPushButton(tr("Dump tree"), this);
     dumpTreeButton->setFocusPolicy(Qt::StrongFocus);
     connect(dumpTreeButton, &QPushButton::clicked, this, [this]() { dumpTree(); });
+    connect(dumpTreeButton, &MyPushButton::shiftClicked, this, [this]() { QTimer::singleShot(shiftDelay, this, &TreeViewDialog::dumpTree); });
     dumpTreeButton->setVisible(false);
     connectionLayout->addWidget(dumpTreeButton);
 
@@ -256,6 +257,15 @@ void TreeViewDialog::closeEvent(QCloseEvent* event)
 
 void TreeViewDialog::init()
 {
+    if (qApp->arguments().size() > 1) {
+        QString arg = qApp->arguments().at(1);
+        int temp = arg.toInt();
+        if (temp > 0) {
+            shiftDelay = temp;
+            qDebug() << Q_FUNC_INFO << "Shift delay set to:" << shiftDelay;
+        }
+    }
+
     auto formLayout = new QVBoxLayout;
     formLayout->addLayout(createTopLayout());
 
