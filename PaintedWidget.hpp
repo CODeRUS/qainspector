@@ -10,16 +10,18 @@ public:
     explicit PaintedWidget(QWidget *parent = nullptr);
 
 public slots:
-    void setImage(const QString &path, bool force = false);
+    void setImageData(const QByteArray &data);
     void setItemRect(const QRect &rect);
     void setClickPoint(const QPointF &point);
     QPointF scaledClickPoint();
+
+    float scaleRatio();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    QString m_image;
+    QByteArray m_imageData;
     QRect m_itemRect;
     QPointF m_scaledPoint;
     QPointF m_clickPoint;

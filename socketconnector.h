@@ -2,15 +2,17 @@
 #ifndef SOCKETCONNECTOR_H
 #define SOCKETCONNECTOR_H
 
+#include <QElapsedTimer>
 #include <QObject>
-#include <QJSValue>
+#include <QPoint>
+#include <QVector>
 
 class QTcpSocket;
 class SocketConnector : public QObject
 {
     Q_OBJECT
 public:
-    explicit SocketConnector(QObject *parent = nullptr);
+    explicit SocketConnector(QObject* parent = nullptr);
 
     Q_PROPERTY(bool connected READ isConnected WRITE setConnected NOTIFY connectedChanged)
     bool isConnected() const;
@@ -21,20 +23,12 @@ public:
     Q_PROPERTY(QString applicationName MEMBER m_applicationName NOTIFY applicationNameChanged)
 
 public slots:
-    QString getDumpPage();
-    void getDumpPage(QJSValue callback);
-
     QString getDumpTree();
-    void getDumpTree(QJSValue callback);
+    QByteArray getGrabWindow();
 
-    QString getDumpCover();
-    void getDumpCover(QJSValue callback);
-
-    bool getGrabWindow();
-    void getGrabWindow(QJSValue callback);
-
-    bool getGrabCover();
-    void getGrabCover(QJSValue callback);
+    void mousePressed(const QPoint &p);
+    void mouseReleased(const QPoint &p);
+    void mouseMoved(const QPoint &p);
 
 signals:
     void connectedChanged(bool connected);
@@ -47,6 +41,9 @@ private:
     QString m_hostName;
     QString m_hostPort;
     QString m_applicationName;
+
+    QVector<QPoint> m_points;
+    QElapsedTimer m_timer;
 };
 
 #endif // SOCKETCONNECTOR_H
