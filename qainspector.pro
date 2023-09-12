@@ -1,7 +1,8 @@
 QT += core gui
 QT += network xml widgets
 
-CONFIG += c++11
+#CONFIG += c++11
+QT += core5compat
 
 qtHaveModule(xmlpatterns) {
     QT += xmlpatterns

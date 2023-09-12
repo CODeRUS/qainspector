@@ -10,7 +10,9 @@
 
 #include <QJsonValue>
 
+#if defined(MO_USE_QXMLPATTERNS)
 #include <QXmlQuery>
+#endif
 #include <QXmlStreamWriter>
 
 MyTreeModel2::MyTreeModel2(QObject* parent)
@@ -256,6 +258,7 @@ void MyTreeModel2::copyToClipboard(const QModelIndex& index)
 
 QString MyTreeModel2::searchXPath(const QString& xpath, const QString& currentId)
 {
+#if defined(MO_USE_QXMLPATTERNS)
     QString out;
     QXmlStreamWriter writer(&out);
     writer.setAutoFormatting(true);
@@ -313,6 +316,9 @@ QString MyTreeModel2::searchXPath(const QString& xpath, const QString& currentId
     }
 
     return items.at(currentIndex + 1);
+#else
+    return QString();
+#endif
 }
 
 void MyTreeModel2::recursiveDumpXml(QXmlStreamWriter* writer, TreeItem2* parent)
