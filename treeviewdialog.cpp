@@ -15,10 +15,12 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScreen>
 #include <QSettings>
 #include <QShortcut>
 #include <QSizePolicy>
 #include <QSplitter>
+#include <QThread>
 #include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
@@ -28,8 +30,29 @@
 
 TreeViewDialog::TreeViewDialog()
 {
-    socket = new SocketConnector(this);
-    settings = new QSettings(this);
+    socket = new SocketConnector();
+    settings = new QSettings("QA", "QAInspector", this);
+
+    QThread *socketThread = new QThread();
+    connect(qApp, &QCoreApplication::aboutToQuit, socketThread, &QThread::quit);
+    connect(socketThread, &QThread::finished, socket, &QObject::deleteLater);
+
+    socket->moveToThread(socketThread);
+
+    connect(this, &TreeViewDialog::getDumpTree, socket, &SocketConnector::getDumpTree);
+    connect(this, &TreeViewDialog::getGrabWindow, socket, &SocketConnector::getGrabWindow);
+    connect(this, &TreeViewDialog::mousePressed, socket, &SocketConnector::mousePressed);
+    connect(this, &TreeViewDialog::mouseReleased, socket, &SocketConnector::mouseReleased);
+    connect(this, &TreeViewDialog::mouseMoved, socket, &SocketConnector::mouseMoved);
+
+    connect(socket, &SocketConnector::dumpTreeData, this, &TreeViewDialog::dumpTreeData);
+    connect(socket, &SocketConnector::dumpScreenshotData, this, &TreeViewDialog::dumpScreenshotData);
+
+    connect(this, &TreeViewDialog::socketSwapState, socket, &SocketConnector::swapState);
+
+    connect(socketThread, &QThread::started, socket, &SocketConnector::init);
+
+    socketThread->start();
 
     treeView = new QTreeView(this);
     treeView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -60,7 +83,18 @@ TreeViewDialog::TreeViewDialog()
             [this](const QModelIndex& current, const QModelIndex&)
             { paintedWidget->setItemRect(model->getRect(current)); });
 
-    restoreGeometry(settings->value("window/geometry").toByteArray());
+    int width = 1024;
+    int height = 800;
+    int screenWidth = screen()->geometry().width();
+    int screenHeight = screen()->geometry().height();
+
+    if (settings->contains("window/geometry")) {
+        restoreGeometry(settings->value("window/geometry").toByteArray());
+    } else {
+        setGeometry((screenWidth/2)-(width/2), (screenHeight/2)-(height/2), width, height);
+    }
+
+
 }
 
 QLayout* TreeViewDialog::createTopLayout()
@@ -110,13 +144,24 @@ QLayout* TreeViewDialog::createTopLayout()
     connect(connectButton,
             &QPushButton::clicked,
             this,
-            [=]() { socket->setConnected(!socket->isConnected()); });
+            [=]() {
+                connectButton->setEnabled(false);
+                emit socketSwapState();
+            });
     connectionLayout->addWidget(connectButton);
 
     auto dumpTreeButton = new MyPushButton(tr("Dump tree"), this);
     dumpTreeButton->setFocusPolicy(Qt::StrongFocus);
-    connect(dumpTreeButton, &QPushButton::clicked, this, [this]() { dumpTree(); });
-    connect(dumpTreeButton, &MyPushButton::shiftClicked, this, [this]() { QTimer::singleShot(shiftDelay, this, &TreeViewDialog::dumpTree); });
+    connect(dumpTreeButton, &QPushButton::clicked, this, [=]() {
+        dumpTree();
+        dumpTreeButton->setEnabled(false);
+    });
+    connect(dumpTreeButton, &MyPushButton::shiftClicked, this, [=]() {
+        QTimer::singleShot(shiftDelay, this, &TreeViewDialog::dumpTree);
+    });
+    connect(socket, &SocketConnector::dumpTreeData, this, [=]() {
+        dumpTreeButton->setEnabled(true);
+    });
     dumpTreeButton->setVisible(false);
     connectionLayout->addWidget(dumpTreeButton);
 
@@ -141,6 +186,8 @@ QLayout* TreeViewDialog::createTopLayout()
                 {
                     dumpTree();
                 }
+
+                connectButton->setEnabled(true);
             });
 
     connectionLayout->setAlignment(Qt::AlignLeft);
@@ -252,6 +299,8 @@ void TreeViewDialog::closeEvent(QCloseEvent* event)
 
     settings->setValue("window/geometry", saveGeometry());
     settings->setValue("treeheader/state", treeView->header()->saveState());
+    settings->sync();
+
     QWidget::closeEvent(event);
 }
 
@@ -369,7 +418,7 @@ bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)
             }
         } else {
             QPoint scaledPoint(point.x() / paintedWidget->scaleRatio(), point.y() / paintedWidget->scaleRatio());
-            socket->mousePressed(scaledPoint);
+            emit mousePressed(scaledPoint);
         }
     } else if (event->type() == QEvent::MouseButtonRelease) {
         QMouseEvent* me = dynamic_cast<QMouseEvent*>(event);
@@ -380,7 +429,7 @@ bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)
 
         if (me->button() == Qt::RightButton) {
             QPoint scaledPoint(point.x() / paintedWidget->scaleRatio(), point.y() / paintedWidget->scaleRatio());
-            socket->mouseReleased(scaledPoint);
+            emit mouseReleased(scaledPoint);
             QTimer::singleShot(300, this, &TreeViewDialog::dumpScreenshot);
         }
 
@@ -393,7 +442,7 @@ bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)
 
         if (me->buttons() & Qt::RightButton) {
             QPoint scaledPoint(point.x() / paintedWidget->scaleRatio(), point.y() / paintedWidget->scaleRatio());
-            socket->mouseMoved(scaledPoint);
+            emit mouseMoved(scaledPoint);
         }
     }
 
@@ -402,7 +451,20 @@ bool TreeViewDialog::eventFilter(QObject* obj, QEvent* event)
 
 void TreeViewDialog::dumpTree()
 {
-    const QString data = socket->getDumpTree();
+    emit getDumpTree();
+}
+
+void TreeViewDialog::dumpScreenshot()
+{
+    emit getGrabWindow();
+
+//    if (socket->isConnected()) {
+//        QTimer::singleShot(100, this, &TreeViewDialog::dumpScreenshot);
+//    }
+}
+
+void TreeViewDialog::dumpTreeData(const QByteArray &data)
+{
     if (!data.isEmpty())
     {
         model->loadDump(data);
@@ -410,17 +472,12 @@ void TreeViewDialog::dumpTree()
     dumpScreenshot();
 }
 
-void TreeViewDialog::dumpScreenshot()
+void TreeViewDialog::dumpScreenshotData(const QByteArray &data)
 {
-    const QByteArray screenshot = socket->getGrabWindow();
-    if (screenshot.size() > 0)
+    if (data.size() > 0)
     {
-        paintedWidget->setImageData(screenshot);
+        paintedWidget->setImageData(data);
     }
-
-//    if (socket->isConnected()) {
-//        QTimer::singleShot(100, this, &TreeViewDialog::dumpScreenshot);
-//    }
 }
 
 MyPushButton::MyPushButton(QWidget* parent)

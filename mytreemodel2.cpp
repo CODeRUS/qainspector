@@ -61,12 +61,12 @@ void MyTreeModel2::fillModel(const QJsonObject& object)
     endResetModel();
 }
 
-void MyTreeModel2::loadDump(const QString& dump)
+void MyTreeModel2::loadDump(const QByteArray& dump)
 {
     qDebug() << Q_FUNC_INFO << dump.length();
 
     QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(dump.toUtf8(), &error);
+    QJsonDocument doc = QJsonDocument::fromJson(dump, &error);
     if (error.error == QJsonParseError::NoError)
     {
         fillModel(doc.object());
