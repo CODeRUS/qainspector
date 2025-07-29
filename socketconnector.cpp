@@ -29,11 +29,12 @@ void SocketConnector::setConnected(bool connected)
     {
         m_socket->connectToHost(m_hostName, m_hostPort.toUShort());
         qDebug() << Q_FUNC_INFO << "Connecting:" << m_socket->waitForConnected(3000);
+
+        emit connectedChanged(isConnected());
     }
 
     qDebug() << Q_FUNC_INFO << "Set connect:" << connected << "Connected:" << isConnected();
 
-    emit connectedChanged(isConnected());
 }
 
 void SocketConnector::init()
