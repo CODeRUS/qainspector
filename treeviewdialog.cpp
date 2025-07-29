@@ -227,16 +227,16 @@ QLayout* TreeViewDialog::createSearchLayout()
             &QRadioButton::clicked,
             this,
             [&]() { searchType = MyTreeModel2::SearchType::ObjectName; });
-    auto xPathButton = new QRadioButton("XPath");
-    xPathButton->setFocusPolicy(Qt::StrongFocus);
-    connect(xPathButton,
+    auto objectIdButton = new QRadioButton("ObjectId");
+    objectIdButton->setFocusPolicy(Qt::StrongFocus);
+    connect(objectIdButton,
             &QRadioButton::clicked,
             this,
-            [&]() { searchType = MyTreeModel2::SearchType::XPath; });
+            [&]() { searchType = MyTreeModel2::SearchType::ObjectId; });
     groupBoxLayout->addWidget(classNameButton);
     groupBoxLayout->addWidget(textButton);
     groupBoxLayout->addWidget(objectNameButton);
-    // groupBoxLayout->addWidget(xPathButton);
+    groupBoxLayout->addWidget(objectIdButton);
     groupBox->setLayout(groupBoxLayout);
 
     auto searchButton = new QPushButton(tr("Search"));

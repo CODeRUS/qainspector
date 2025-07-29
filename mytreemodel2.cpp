@@ -417,31 +417,13 @@ QModelIndex MyTreeModel2::searchIndex(SearchType key,
                                       const QModelIndex& currentIndex,
                                       TreeItem2* node)
 {
-    if (key == SearchType::XPath)
-    {
-        QString currentId;
-        if (currentIndex.internalPointer())
-        {
-            TreeItem2* item = static_cast<TreeItem2*>(currentIndex.internalPointer());
-            currentId = item->data(QStringLiteral("id")).toString();
-        }
-
-        const QString itemId = searchXPath(value.toString(), currentId);
-        if (itemId.isEmpty())
-        {
-            return QModelIndex();
-        }
-        return searchIndex(QStringLiteral("id"), itemId, false, currentIndex, node);
-    }
-    else
-    {
-        const QStringList keys{QStringLiteral("classname"),
-                               QStringLiteral("mainTextProperty"),
-                               QStringLiteral("objectName")};
-        const QString sKey = keys[static_cast<std::underlying_type<SearchType>::type>(key)];
-        qDebug() << Q_FUNC_INFO << sKey << currentIndex << node;
-        return searchIndex(sKey, value, partialSearch, currentIndex, node);
-    }
+    const QStringList keys{QStringLiteral("classname"),
+                           QStringLiteral("mainTextProperty"),
+                           QStringLiteral("objectName"),
+                           QStringLiteral("objectId")};
+    const QString sKey = keys[static_cast<std::underlying_type<SearchType>::type>(key)];
+    qDebug() << Q_FUNC_INFO << sKey << currentIndex << node;
+    return searchIndex(sKey, value, partialSearch, currentIndex, node);
 }
 
 QModelIndex MyTreeModel2::searchByCoordinates(qreal posx, qreal posy, TreeItem2* node)
