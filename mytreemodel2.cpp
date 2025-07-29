@@ -17,6 +17,7 @@ MyTreeModel2::MyTreeModel2(QObject* parent)
     : QAbstractItemModel(parent)
 {
     headers.append("classname");
+    headers.append("objectId");
     headers.append("objectName");
     headers.append("mainTextProperty");
     headers.append("abs_x");
@@ -31,6 +32,7 @@ MyTreeModel2::MyTreeModel2(QObject* parent)
     rootObject.insert("abs_x", QJsonValue::fromVariant("abx"));
     rootObject.insert("abs_y", QJsonValue::fromVariant("aby"));
     rootObject.insert("mainTextProperty", QJsonValue::fromVariant("Text"));
+    rootObject.insert("objectId", QJsonValue::fromVariant("ObjectId"));
     rootObject.insert("objectName", QJsonValue::fromVariant("ObjectName"));
     rootObject.insert("enabled", QJsonValue::fromVariant("ena"));
     rootObject.insert("visible", QJsonValue::fromVariant("vis"));
@@ -496,15 +498,22 @@ QModelIndex MyTreeModel2::searchByCoordinates(qreal posx, qreal posy, TreeItem2*
             classname != QLatin1String("DeclarativeTouchBlocker") &&
             classname != QLatin1String("QQuickItem") &&
             classname != QLatin1String("RotatingItem") &&
+            classname != QLatin1String("QQuickEffect") &&
+            classname != QLatin1String("QQuickMultiEffect") &&
             classname != QLatin1String("QQuickShaderEffect") &&
             classname != QLatin1String("QQuickOverlay") &&
             classname != QLatin1String("QQuickRectangle") &&
             classname != QLatin1String("QQuickMouseArea") &&
             classname != QLatin1String("InformationManager") &&
             classname != QLatin1String("QQuickShaderEffectSource") &&
+            classname != QLatin1String("QGfxSourceProxy") &&
             classname != QLatin1String("HwcImage") &&
-            !classname.endsWith(QLatin1String("Gradient")) && posx >= itemx &&
-            posx <= (itemx + itemw) && posy >= itemy && posy <= (itemy + itemh))
+            !classname.endsWith(QLatin1String("Gradient")) &&
+            !classname.endsWith(QLatin1String("DropArea")) &&
+            posx >= itemx &&
+            posx <= (itemx + itemw) &&
+            posy >= itemy &&
+            posy <= (itemy + itemh))
         {
             childIndex = createIndex(i, 0, reinterpret_cast<quintptr>(child));
         }

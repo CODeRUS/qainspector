@@ -102,54 +102,54 @@ void PaintedWidget::paintEvent(QPaintEvent* e)
         painter.setBrush(Qt::NoBrush);
         painter.drawRect(itemRect);
 
-        itemRect.adjust(1, 1, 0, 0);
+        // itemRect.adjust(1, 1, 0, 0);
 
-        QString text = QStringLiteral(" %1:%2 %3:%4 ")
-                           .arg(m_itemRect.x())
-                           .arg(m_itemRect.y())
-                           .arg(m_itemRect.width())
-                           .arg(m_itemRect.height());
-        QSize fontSize = painter.fontMetrics().size(Qt::TextSingleLine, text);
-        const QRectF textRect{itemRect.topLeft(), QSizeF(fontSize)};
+        // QString text = QStringLiteral(" %1:%2 %3:%4 ")
+        //                    .arg(m_itemRect.x())
+        //                    .arg(m_itemRect.y())
+        //                    .arg(m_itemRect.width())
+        //                    .arg(m_itemRect.height());
+        // QSize fontSize = painter.fontMetrics().size(Qt::TextSingleLine, text);
+        // const QRectF textRect{itemRect.topLeft(), QSizeF(fontSize)};
 
         // draw rect background
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Qt::white);
-        painter.drawRect(textRect);
+        // painter.setPen(Qt::NoPen);
+        // painter.setBrush(Qt::white);
+        // painter.drawRect(textRect);
 
         // draw rect text
-        painter.setOpacity(1.0);
+        // painter.setOpacity(1.0);
 
-        painter.setPen(Qt::black);
-        painter.drawText(textRect, Qt::AlignCenter, text);
+        // painter.setPen(Qt::black);
+        // painter.drawText(textRect, Qt::AlignCenter, text);
     }
 
     if (!m_clickPoint.isNull())
     {
-        QString text =
-            QStringLiteral(" %1:%2 ").arg((int)(m_clickPoint.x())).arg((int)(m_clickPoint.y()));
-        QSize fontSize = painter.fontMetrics().size(Qt::TextSingleLine, text);
-        const QRectF textRect{m_scaledPoint, QSizeF(fontSize)};
+        // QString text =
+        //     QStringLiteral(" %1:%2 ").arg((int)(m_clickPoint.x())).arg((int)(m_clickPoint.y()));
+        // QSize fontSize = painter.fontMetrics().size(Qt::TextSingleLine, text);
+        // const QRectF textRect{m_scaledPoint, QSizeF(fontSize)};
 
         // draw click frame
-        painter.setOpacity(1.0);
+        // painter.setOpacity(1.0);
 
-        QPen pen;
-        pen.setWidth(0);
-        pen.setColor(Qt::white);
-        painter.setPen(pen);
-        painter.setBrush(Qt::white);
-        painter.drawRect(textRect);
+        // QPen pen;
+        // pen.setWidth(0);
+        // pen.setColor(Qt::white);
+        // painter.setPen(pen);
+        // painter.setBrush(Qt::white);
+        // painter.drawRect(textRect);
 
         // draw click text
-        painter.setOpacity(1.0);
+        // painter.setOpacity(1.0);
 
-        painter.setPen(Qt::black);
-        painter.drawText(textRect, Qt::AlignCenter, text);
+        // painter.setPen(Qt::black);
+        // painter.drawText(textRect, Qt::AlignCenter, text);
 
         // draw click point
-        pen.setColor(Qt::red);
-        painter.setPen(pen);
-        painter.drawEllipse(m_scaledPoint, 1, 1);
+        // pen.setColor(Qt::red);
+        // painter.setPen(pen);
+        // painter.drawEllipse(m_scaledPoint, 1, 1);
     }
 }
