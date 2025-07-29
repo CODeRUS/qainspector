@@ -236,7 +236,7 @@ QLayout* TreeViewDialog::createSearchLayout()
     groupBoxLayout->addWidget(classNameButton);
     groupBoxLayout->addWidget(textButton);
     groupBoxLayout->addWidget(objectNameButton);
-    groupBoxLayout->addWidget(xPathButton);
+    // groupBoxLayout->addWidget(xPathButton);
     groupBox->setLayout(groupBoxLayout);
 
     auto searchButton = new QPushButton(tr("Search"));
@@ -318,17 +318,17 @@ void TreeViewDialog::init()
     auto formLayout = new QVBoxLayout;
     formLayout->addLayout(createTopLayout());
 
-    auto leftFrame = new QFrame();
+    // auto leftFrame = new QFrame();
 
-    paintedWidget = new PaintedWidget(leftFrame);
+    paintedWidget = new PaintedWidget(this);
     paintedWidget->installEventFilter(this);
-    leftFrame->setMinimumWidth(100);
+    // leftFrame->setMinimumWidth(100);
 
     treeView->setMinimumWidth(100);
 
     auto splitter = new QSplitter(this);
     splitter->setOrientation(Qt::Horizontal);
-    splitter->addWidget(leftFrame);
+    splitter->addWidget(paintedWidget);
     splitter->addWidget(treeView);
     splitter->setCollapsible(0, false);
     splitter->setCollapsible(1, false);
