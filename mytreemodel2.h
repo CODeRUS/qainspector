@@ -35,7 +35,6 @@ private:
 
 };
 
-class QXmlStreamWriter;
 class MyTreeModel2 : public QAbstractItemModel
 {
     Q_OBJECT
@@ -45,8 +44,7 @@ public:
     enum class SearchType {
         ClassName,
         Text,
-        ObjectName,
-        ObjectId,
+        ObjectName
     };
 
     QVariant data(const QModelIndex &index, int role) const override;
@@ -61,11 +59,14 @@ public:
 
     Q_INVOKABLE QRect getRect(const QModelIndex &index);
     Q_INVOKABLE QJsonObject getData(const QModelIndex &index);
+    Q_INVOKABLE QVariantMap getDataVariant(const QModelIndex &index);
     Q_INVOKABLE void copyToClipboard(const QModelIndex &index);
+
+    Q_INVOKABLE QStringList headers() const;
 
 public slots:
     void fillModel(const QJsonObject &object);
-    void loadDump(const QByteArray &dump);
+    void loadDump(const QString &dump);
 
     QVariantList getChildrenIndexes(TreeItem2 *node = nullptr);
     QModelIndex searchIndex(const QString &key, const QVariant &value, bool partialSearch, const QModelIndex &currentIndex, TreeItem2 *node = nullptr);
@@ -75,9 +76,7 @@ public slots:
 
 private:
     QList<TreeItem2*> processChilds(const QJsonArray &data, TreeItem2 *parentItem);
-    QString searchXPath(const QString &xpath, const QString &currentId = QString());
-    void recursiveDumpXml(QXmlStreamWriter *writer, TreeItem2 *parent);
 
-    QStringList headers;
+    QStringList m_headers;
     TreeItem2 *m_rootItem = nullptr;
 };

@@ -10,30 +10,27 @@
 
 #include <QJsonValue>
 
-#include <QXmlQuery>
-#include <QXmlStreamWriter>
-
 MyTreeModel2::MyTreeModel2(QObject* parent)
     : QAbstractItemModel(parent)
 {
-    headers.append("classname");
-    headers.append("objectId");
-    headers.append("objectName");
-    headers.append("mainTextProperty");
-    headers.append("abs_x");
-    headers.append("abs_y");
-    headers.append("enabled");
-    headers.append("visible");
-    headers.append("width");
-    headers.append("height");
+    m_headers.append("classname");
+    m_headers.append("objectName");
+    m_headers.append("objectId");
+    m_headers.append("mainTextProperty");
+    m_headers.append("abs_x");
+    m_headers.append("abs_y");
+    m_headers.append("enabled");
+    m_headers.append("visible");
+    m_headers.append("width");
+    m_headers.append("height");
 
     QJsonObject rootObject;
     rootObject.insert("classname", QJsonValue::fromVariant("Classname"));
     rootObject.insert("abs_x", QJsonValue::fromVariant("abx"));
     rootObject.insert("abs_y", QJsonValue::fromVariant("aby"));
     rootObject.insert("mainTextProperty", QJsonValue::fromVariant("Text"));
-    rootObject.insert("objectId", QJsonValue::fromVariant("ObjectId"));
     rootObject.insert("objectName", QJsonValue::fromVariant("ObjectName"));
+    rootObject.insert("objectId", QJsonValue::fromVariant("ObjectId"));
     rootObject.insert("enabled", QJsonValue::fromVariant("ena"));
     rootObject.insert("visible", QJsonValue::fromVariant("vis"));
     rootObject.insert("width", QJsonValue::fromVariant("wid"));
@@ -63,12 +60,12 @@ void MyTreeModel2::fillModel(const QJsonObject& object)
     endResetModel();
 }
 
-void MyTreeModel2::loadDump(const QByteArray& dump)
+void MyTreeModel2::loadDump(const QString& dump)
 {
     qDebug() << Q_FUNC_INFO << dump.length();
 
     QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(dump, &error);
+    QJsonDocument doc = QJsonDocument::fromJson(dump.toUtf8(), &error);
     if (error.error == QJsonParseError::NoError)
     {
         fillModel(doc.object());
@@ -105,12 +102,12 @@ QVariant MyTreeModel2::data(const QModelIndex& index, int role) const
     if (role != Qt::DisplayRole)
         return QVariant();
 
-    if (role > headers.count())
+    if (role > m_headers.count())
         return QVariant();
 
     TreeItem2* item = static_cast<TreeItem2*>(index.internalPointer());
 
-    return item->data(headers[index.column()]).toString();
+    return item->data(m_headers[index.column()]).toString();
 }
 
 Qt::ItemFlags MyTreeModel2::flags(const QModelIndex& index) const
@@ -127,7 +124,7 @@ QVariant MyTreeModel2::headerData(int section, Qt::Orientation orientation, int 
 {
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole)
     {
-        return m_rootItem->data(headers[section]);
+        return m_rootItem->data(m_headers[section]);
     }
 
     return QVariant();
@@ -212,7 +209,7 @@ int MyTreeModel2::columnCount(const QModelIndex& parent) const
     {
         return static_cast<TreeItem2*>(parent.internalPointer())->columnCount();
     }
-    return headers.count();
+    return m_headers.count();
 }
 
 QRect MyTreeModel2::getRect(const QModelIndex& index)
@@ -244,6 +241,11 @@ QJsonObject MyTreeModel2::getData(const QModelIndex& index)
     return item->data();
 }
 
+QVariantMap MyTreeModel2::getDataVariant(const QModelIndex &index)
+{
+    return getData(index).toVariantMap();
+}
+
 void MyTreeModel2::copyToClipboard(const QModelIndex& index)
 {
     if (!index.isValid())
@@ -256,88 +258,9 @@ void MyTreeModel2::copyToClipboard(const QModelIndex& index)
     qGuiApp->clipboard()->setText(item->data("id").toString());
 }
 
-QString MyTreeModel2::searchXPath(const QString& xpath, const QString& currentId)
+QStringList MyTreeModel2::headers() const
 {
-    QString out;
-    QXmlStreamWriter writer(&out);
-    writer.setAutoFormatting(true);
-    writer.writeStartDocument();
-    recursiveDumpXml(&writer, m_rootItem->child(0));
-    writer.writeEndDocument();
-
-    qDebug().noquote() << out;
-
-    QXmlQuery query(QXmlQuery::XPath20);
-    query.setFocus(out);
-    query.setQuery(xpath);
-
-    if (!query.isValid())
-    {
-        return QString();
-    }
-    QString tempString;
-    query.evaluateTo(&tempString);
-
-    if (tempString.trimmed().isEmpty())
-    {
-        return QString();
-    }
-
-    const QString resultData =
-        QLatin1String("<results>") + tempString + QLatin1String("</results>");
-    QXmlStreamReader reader(resultData);
-    reader.readNextStartElement();
-    QStringList items;
-    while (!reader.atEnd())
-    {
-        reader.readNext();
-        if (reader.isStartElement())
-        {
-            items.append(reader.attributes().value(QStringLiteral("id")).toString());
-        }
-    }
-    if (items.isEmpty())
-    {
-        return QString();
-    }
-    if (currentId.isEmpty())
-    {
-        return items.first();
-    }
-    const int currentIndex = items.indexOf(currentId);
-    if (currentIndex == -1)
-    {
-        return items.first();
-    }
-    if (currentIndex == items.size() - 1)
-    {
-        return items.first();
-    }
-
-    return items.at(currentIndex + 1);
-}
-
-void MyTreeModel2::recursiveDumpXml(QXmlStreamWriter* writer, TreeItem2* parent)
-{
-    const QJsonObject object = parent->data();
-    writer->writeStartElement(object.value(QStringLiteral("classname")).toString());
-    for (auto i = object.constBegin(), objEnd = object.constEnd(); i != objEnd; ++i)
-    {
-        const QJsonValue& val = *i;
-        const QString& name = i.key();
-
-        writer->writeAttribute(name, val.toVariant().toString());
-    }
-    if (object.contains(QStringLiteral("mainTextProperty")))
-    {
-        writer->writeCharacters(object.value(QStringLiteral("mainTextProperty")).toString());
-    }
-    for (int i = 0; i != parent->childCount(); ++i)
-    {
-        TreeItem2* child = parent->child(i);
-        recursiveDumpXml(writer, child);
-    }
-    writer->writeEndElement();
+    return m_headers;
 }
 
 QVariantList MyTreeModel2::getChildrenIndexes(TreeItem2* node)
@@ -377,11 +300,14 @@ QModelIndex MyTreeModel2::searchIndex(const QString& key,
     for (int i = 0; i != parent->childCount(); ++i)
     {
         TreeItem2* child = parent->child(i);
-        const QModelIndex newIndex = createIndex(i, 0, reinterpret_cast<quintptr>(child));
+        QModelIndex newIndex = createIndex(i, 0, reinterpret_cast<quintptr>(child));
 
         const bool match =
-            child->data(key) == value || (partialSearch && value.type() == QVariant::String &&
+            child->data(key) == value || (partialSearch && value.metaType() == QMetaType(QMetaType::QString) &&
                                           child->data(key).toString().contains(value.toString()));
+        if (match)
+            newIndex = createIndex(i, m_headers.indexOf(key), reinterpret_cast<quintptr>(child));
+
         if (!currentFound && newIndex == currentIndex)
         {
             currentFound = true;
@@ -417,10 +343,12 @@ QModelIndex MyTreeModel2::searchIndex(SearchType key,
                                       const QModelIndex& currentIndex,
                                       TreeItem2* node)
 {
-    const QStringList keys{QStringLiteral("classname"),
-                           QStringLiteral("mainTextProperty"),
-                           QStringLiteral("objectName"),
-                           QStringLiteral("objectId")};
+    const QStringList keys {
+        QStringLiteral("classname"),
+        QStringLiteral("mainTextProperty"),
+        QStringLiteral("objectName"),
+        QStringLiteral("objectId"),
+    };
     const QString sKey = keys[static_cast<std::underlying_type<SearchType>::type>(key)];
     qDebug() << Q_FUNC_INFO << sKey << currentIndex << node;
     return searchIndex(sKey, value, partialSearch, currentIndex, node);
@@ -476,28 +404,31 @@ QModelIndex MyTreeModel2::searchByCoordinates(qreal posx, qreal posy, TreeItem2*
         const int itemw = child->data(QStringLiteral("width")).toInt();
         const int itemh = child->data(QStringLiteral("height")).toInt();
 
-        if (canProcess && !classname.endsWith(QLatin1String("Loader")) &&
+        if (canProcess &&
+            !classname.endsWith(QLatin1String("Loader")) &&
             classname != QLatin1String("DeclarativeTouchBlocker") &&
             classname != QLatin1String("QQuickItem") &&
             classname != QLatin1String("RotatingItem") &&
-            classname != QLatin1String("QQuickEffect") &&
-            classname != QLatin1String("QQuickMultiEffect") &&
             classname != QLatin1String("QQuickShaderEffect") &&
             classname != QLatin1String("QQuickOverlay") &&
             classname != QLatin1String("QQuickRectangle") &&
             classname != QLatin1String("QQuickMouseArea") &&
             classname != QLatin1String("InformationManager") &&
             classname != QLatin1String("QQuickShaderEffectSource") &&
-            classname != QLatin1String("QGfxSourceProxy") &&
             classname != QLatin1String("HwcImage") &&
             !classname.endsWith(QLatin1String("Gradient")) &&
             !classname.endsWith(QLatin1String("DropArea")) &&
+            !classname.endsWith(QLatin1String("Effect")) &&
             posx >= itemx &&
-            posx <= (itemx + itemw) &&
-            posy >= itemy &&
-            posy <= (itemy + itemh))
+            posx <= (itemx + itemw) && posy >= itemy && posy <= (itemy + itemh))
         {
             childIndex = createIndex(i, 0, reinterpret_cast<quintptr>(child));
+        } else
+
+        if (canProcess &&
+            classname.endsWith(QLatin1String("DropArea"))
+        ) {
+            continue;
         }
 
         QModelIndex someIndex = searchByCoordinates(posx, posy, child);

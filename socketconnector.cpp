@@ -9,36 +9,6 @@ SocketConnector::SocketConnector(QObject* parent)
     : QObject(parent)
     , m_socket(new QTcpSocket(this))
 {
-}
-
-bool SocketConnector::isConnected() const
-{
-    return m_socket->state() == QTcpSocket::ConnectedState;
-}
-
-void SocketConnector::setConnected(bool connected)
-{
-    qDebug() << Q_FUNC_INFO << m_hostName << m_hostPort;
-    const bool lastConnected = isConnected();
-
-    if (!connected && lastConnected)
-    {
-        m_socket->close();
-    }
-    else if (connected && !lastConnected)
-    {
-        m_socket->connectToHost(m_hostName, m_hostPort.toUShort());
-        qDebug() << Q_FUNC_INFO << "Connecting:" << m_socket->waitForConnected(3000);
-
-        emit connectedChanged(isConnected());
-    }
-
-    qDebug() << Q_FUNC_INFO << "Set connect:" << connected << "Connected:" << isConnected();
-
-}
-
-void SocketConnector::init()
-{
     connect(m_socket,
             &QTcpSocket::connected,
             [this]()
@@ -69,12 +39,30 @@ void SocketConnector::init()
             });
 }
 
-void SocketConnector::swapState()
+bool SocketConnector::isConnected() const
 {
-    setConnected(!isConnected());
+    return m_socket->state() == QTcpSocket::ConnectedState;
 }
 
-void SocketConnector::getDumpTree()
+void SocketConnector::setConnected(bool connected)
+{
+    qDebug() << Q_FUNC_INFO << m_hostName << m_hostPort;
+    const bool lastConnected = isConnected();
+
+    if (!connected && lastConnected)
+    {
+        m_socket->close();
+    }
+    else if (connected && !lastConnected)
+    {
+        m_socket->connectToHost(m_hostName, m_hostPort.toUShort());
+        qDebug() << Q_FUNC_INFO << "Connecting:" << m_socket->waitForConnected(3000);
+    }
+
+    qDebug() << Q_FUNC_INFO << "Set connect:" << connected << "Connected:" << isConnected();
+}
+
+QString SocketConnector::getDumpTree()
 {
     QJsonObject json;
     json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
@@ -101,9 +89,7 @@ void SocketConnector::getDumpTree()
         {
             qWarning() << Q_FUNC_INFO << "Timeout" << error.error << error.errorString();
             qDebug().noquote() << replyData;
-
-            emit dumpTreeData({});
-            return;
+            return QString();
         }
         replyData.append(m_socket->readAll());
         replyDoc = QJsonDocument::fromJson(replyData, &error);
@@ -115,14 +101,12 @@ void SocketConnector::getDumpTree()
     {
         QByteArray data = qUncompress(QByteArray::fromBase64(
             replyObject.value(QStringLiteral("value")).toString().toLatin1()));
-        emit dumpTreeData(data);
-        return;
+        return QString::fromUtf8(data);
     }
-
-    emit dumpTreeData({});
+    return QString();
 }
 
-void SocketConnector::getGrabWindow()
+QByteArray SocketConnector::getGrabWindow()
 {
     QJsonObject json;
     json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
@@ -147,9 +131,7 @@ void SocketConnector::getGrabWindow()
         {
             qWarning() << Q_FUNC_INFO << "Timeout" << error.error << error.errorString();
             qDebug().noquote() << replyData;
-
-            emit dumpScreenshotData({});
-            return;
+            return {};
         }
         replyData.append(m_socket->readAll());
         replyDoc = QJsonDocument::fromJson(replyData, &error);
@@ -159,15 +141,57 @@ void SocketConnector::getGrabWindow()
     if (replyObject.contains(QStringLiteral("status")) &&
         replyObject.value(QStringLiteral("status")).toInt() == 0)
     {
+        const auto b64 = replyObject.value(QStringLiteral("value")).toString();
+        emit imageData(b64);
         const QByteArray img =
-            QByteArray::fromBase64(replyObject.value(QStringLiteral("value")).toString().toUtf8());
+            QByteArray::fromBase64(b64.toUtf8());
         qDebug() << Q_FUNC_INFO << img.size();
+        return img;
+    }
+    return {};
+}
 
-        emit dumpScreenshotData(img);
-        return;
+QPoint SocketConnector::getClick()
+{
+    QJsonObject json;
+    json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
+    json.insert(QStringLiteral("action"), QJsonValue(QStringLiteral("getClickPoint")));
+    json.insert(QStringLiteral("params"), QJsonValue(QString()));
+    const QByteArray data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    m_socket->write(data);
+    m_socket->write("\n", 1);
+    m_socket->waitForBytesWritten();
+
+    QByteArray replyData;
+    QJsonDocument replyDoc;
+    QJsonParseError error;
+    error.error = QJsonParseError::UnterminatedObject;
+
+    replyDoc = QJsonDocument::fromJson(replyData, &error);
+
+    while (error.error != QJsonParseError::NoError)
+    {
+        if (!m_socket->waitForReadyRead(-1))
+        {
+            qWarning() << Q_FUNC_INFO << "Timeout" << error.error << error.errorString();
+            qDebug().noquote() << replyData;
+            return {};
+        }
+        replyData.append(m_socket->readAll());
+        qDebug() << replyData;
+        replyDoc = QJsonDocument::fromJson(replyData, &error);
     }
 
-    emit dumpScreenshotData({});
+    QJsonObject replyObject = replyDoc.object();
+    if (replyObject.contains(QStringLiteral("status")) &&
+        replyObject.value(QStringLiteral("status")).toInt() == 0)
+    {
+        const auto pointObject = replyObject.value(QStringLiteral("value")).toObject();
+        QPoint point(pointObject.value("x").toInt(), pointObject.value("y").toInt());
+        return point;
+    }
+    return {};
 }
 
 void SocketConnector::mousePressed(const QPoint &p)
@@ -208,8 +232,6 @@ void SocketConnector::mouseReleased(const QPoint &p)
 
     if (data.isEmpty()) {
         return;
-    } else {
-        qDebug() << Q_FUNC_INFO << data;
     }
 
     m_socket->write(data);

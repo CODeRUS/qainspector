@@ -23,12 +23,9 @@ public:
     Q_PROPERTY(QString applicationName MEMBER m_applicationName NOTIFY applicationNameChanged)
 
 public slots:
-    void init();
-
-    void swapState();
-
-    void getDumpTree();
-    void getGrabWindow();
+    QString getDumpTree();
+    QByteArray getGrabWindow();
+    QPoint getClick();
 
     void mousePressed(const QPoint &p);
     void mouseReleased(const QPoint &p);
@@ -40,8 +37,7 @@ signals:
     void portChanged();
     void applicationNameChanged();
 
-    void dumpTreeData(const QByteArray &data);
-    void dumpScreenshotData(const QByteArray &data);
+    void imageData(const QString &b64);
 
 private:
     QTcpSocket* m_socket;

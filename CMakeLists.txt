@@ -1,56 +1,46 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
-project(QAInspector VERSION 0.1 LANGUAGES CXX)
+project(qainspector-qt6 VERSION 0.1 LANGUAGES CXX)
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-
-set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
-    Core
-    Network
-    Xml
-    XmlPatterns
-    Widgets
+find_package(Qt6 6.5 REQUIRED COMPONENTS Quick)
+
+qt_standard_project_setup(REQUIRES 6.5)
+
+qt_add_executable(qainspector-qt6
+    main.cpp
+    socketconnector.h
+    socketconnector.cpp
+    mytreemodel2.h
+    mytreemodel2.cpp
 )
 
-file(GLOB_RECURSE PROJECT_SOURCES *.h *.hpp *.cppc)
-
-set(MACOSX_BUNDLE_ICON_FILE application.icns)
-set(MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME})
-set(APP_ICON_MACOSX application.icns)
-set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES
-      MACOSX_PACKAGE_LOCATION "Resources")
-
-add_executable(${PROJECT_NAME}
-    MACOSX_BUNDLE
-    ${PROJECT_SOURCES}
-    ${APP_ICON_MACOSX}
+qt_add_qml_module(qainspector-qt6
+    URI qainspector-qt6
+    VERSION 1.0
+    QML_FILES
+        qml/Main.qml
 )
 
-#target_link_libraries(${PROJECT_NAME} LINK_PUBLIC Qt5::QuickControls2 Qt5::Network Qt5::Quick Qt5::Core Qt5::Xml Qt5::XmlPatterns Qt5::Widgets)
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-    Qt5::Core
-    Qt5::Network
-    Qt5::Xml
-    Qt5::XmlPatterns
-    Qt5::Widgets
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER qa.engine.inspector
+# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
+# If you are developing for iOS or macOS you should consider setting an
+# explicit, fixed bundle identifier manually though.
+set_target_properties(qainspector-qt6 PROPERTIES
+#    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.qainspector-qt6
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
 
-#finalize_executable(${PROJECT_NAME})
+target_link_libraries(qainspector-qt6
+    PRIVATE Qt6::Quick
+)
 
+include(GNUInstallDirs)
+install(TARGETS qainspector-qt6
+    BUNDLE DESTINATION .
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
