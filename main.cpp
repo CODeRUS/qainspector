@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
 
     QScopedPointer<SocketConnector> connector(new SocketConnector);
     connector->setProperty("applicationName", "inspector");
+    qmlRegisterUncreatableType<AnalyzeManager>("org.qaengine.qainspector", 1, 0, "AnalyzeManager", "AnalyzeManager");
     qmlRegisterSingletonInstance("org.qaengine.qainspector", 1, 0, "SocketConnector", connector.get());
 
     qmlRegisterType<MyTreeModel2>("org.qaengine.qainspector", 1, 0, "TreeModel");

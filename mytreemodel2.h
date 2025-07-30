@@ -67,6 +67,7 @@ public:
 public slots:
     void fillModel(const QJsonObject &object);
     void loadDump(const QString &dump);
+    void loadFile(const QString &location);
 
     QVariantList getChildrenIndexes(TreeItem2 *node = nullptr);
     QModelIndex searchIndex(const QString &key, const QVariant &value, bool partialSearch, const QModelIndex &currentIndex, TreeItem2 *node = nullptr);

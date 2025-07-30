@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 
 #include <QClipboard>
+#include <QFile>
 #include <QGuiApplication>
 
 #include <QJsonValue>
@@ -74,6 +75,23 @@ void MyTreeModel2::loadDump(const QString& dump)
     {
         qWarning() << Q_FUNC_INFO << error.errorString();
     }
+}
+
+void MyTreeModel2::loadFile(const QString &location)
+{
+    qDebug() << Q_FUNC_INFO << location;
+
+    QFile file(location);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qWarning() << Q_FUNC_INFO << "Failed to open file:" << file.fileName();
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    loadDump(data);
 }
 
 QList<TreeItem2*> MyTreeModel2::processChilds(const QJsonArray& data, TreeItem2* parentItem)

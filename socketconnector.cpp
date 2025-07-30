@@ -5,10 +5,13 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QTcpSocket>
+#include <QStandardPaths>
+#include <QDir>
 
 SocketConnector::SocketConnector(QObject* parent)
     : QObject(parent)
     , m_socket(new QTcpSocket(this))
+    , m_manager(new AnalyzeManager(this))
 {
     connect(m_socket,
             &QTcpSocket::connected,
@@ -160,6 +163,116 @@ QByteArray SocketConnector::getGrabWindow()
     return {};
 }
 
+void SocketConnector::startAnalyze()
+{
+    QJsonObject json
+    {
+        { "cmd", "action" },
+        { "action", "startAnalyze" },
+        { "params", "" }
+    };
+    const auto data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    m_socket->write(data);
+    m_socket->write("\n", 1);
+    m_socket->waitForBytesWritten();
+
+    connect(m_socket, &QTcpSocket::readyRead, this, &SocketConnector::onDataAvailable, Qt::UniqueConnection);
+}
+
+void SocketConnector::stopAnalyze()
+{
+    disconnect(m_socket, &QTcpSocket::readyRead, this, &SocketConnector::onDataAvailable);
+
+    QJsonObject json
+    {
+        { "cmd", "action" },
+        { "action", "stopAnalyze" },
+        { "params", "" }
+    };
+    const auto data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    m_socket->write(data);
+    m_socket->write("\n", 1);
+    m_socket->waitForBytesWritten();
+}
+
+void SocketConnector::onDataAvailable()
+{
+    disconnect(m_socket, &QTcpSocket::readyRead, this, &SocketConnector::onDataAvailable);
+
+    QString location;
+
+    QByteArray buf;
+
+    qDebug() << Q_FUNC_INFO << m_socket->bytesAvailable();
+    while (m_socket->bytesAvailable() > 0 || m_socket->waitForReadyRead(1000)) {
+        const auto data = m_socket->readLine();
+        qDebug() << "read line:" << data.size();
+        qDebug().noquote() << data;
+
+        if (data.startsWith("pressed:")) {
+            const auto msecs = QDateTime::currentMSecsSinceEpoch();
+            const auto dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+            const auto current = QString::number(msecs);
+
+            QDir dirPath(dir);
+            dirPath.mkpath(current);
+
+            location = dirPath.absoluteFilePath(current);
+
+            qDebug() << "Created location:" << location;
+
+            QFile pointFile(location + "/point.txt");
+            if (pointFile.open(QIODevice::WriteOnly)) {
+                pointFile.write(data.mid(9));
+                pointFile.close();
+            } else {
+                qWarning() << Q_FUNC_INFO << "Failed to open file for writing:" << pointFile.fileName();
+            }
+        } else if (data.startsWith("dump start:")) {
+            buf.clear();
+        } else if (data.startsWith("dump end")) {
+            qDebug() << Q_FUNC_INFO << "Dump end, size:" << buf.size();
+            QFile dumpFile(location + "/dump.json");
+            if (dumpFile.open(QIODevice::WriteOnly)) {
+                dumpFile.write(qUncompress(buf));
+                dumpFile.close();
+            } else {
+                qWarning() << Q_FUNC_INFO << "Failed to open file for writing:" << dumpFile.fileName();
+            }
+            buf.clear();
+        } else if (data.startsWith("screen start:")) {
+            buf.clear();
+        } else if (data.startsWith("screen end")) {
+            qDebug() << Q_FUNC_INFO << "Screen end, size:" << buf.size();
+            QFile screenFile(location + "/screenshot.png");
+            if (screenFile.open(QIODevice::WriteOnly)) {
+                screenFile.write(qUncompress(buf));
+                screenFile.close();
+            } else {
+                qWarning() << Q_FUNC_INFO << "Failed to open file for writing:" << screenFile.fileName();
+            }
+            buf.clear();
+        } else {
+            buf.append(data);
+        }
+    }
+
+    m_manager->analyzeDataAdded(location);
+
+    connect(m_socket, &QTcpSocket::readyRead, this, &SocketConnector::onDataAvailable, Qt::UniqueConnection);
+}
+
+void SocketConnector::analyzeData(const QByteArray &data)
+{
+    qDebug() << Q_FUNC_INFO << data.size();
+    if (data.startsWith("pressed:")) {
+
+    }
+    // qDebug().noquote() << data;
+}
+
 void SocketConnector::mousePressed(const QPoint &p)
 {
     m_points = {p};
@@ -211,4 +324,9 @@ void SocketConnector::mouseReleased(const QPoint &p)
 void SocketConnector::mouseMoved(const QPoint &p)
 {
     m_points.append(p);
+}
+
+AnalyzeManager *SocketConnector::manager()
+{
+    return m_manager;
 }

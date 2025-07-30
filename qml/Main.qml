@@ -227,7 +227,7 @@ Window {
 
         Button {
             text: "Analyze"
-            enabled: SocketConnector.connected
+            // enabled: SocketConnector.connected
 
             onClicked: {
                 analyzeWindow.show()
@@ -793,7 +793,8 @@ Window {
     Window {
         id: analyzeWindow
 
-        width: 1000
+        width: minimumWidth
+        minimumWidth: 400
         height: 800
 
         title: "Analyze tool"
@@ -804,17 +805,85 @@ Window {
             if (!visible)
                 return
 
-            SocketConnector.startAnalyze()
+            if (SocketConnector.connected)
+                SocketConnector.startAnalyze()
+
+            analyzeModel.clear()
+            SocketConnector.manager.load()
         }
 
         onClosing: {
-            SocketConnector.stopAnalyze()
+            if (SocketConnector.connected)
+                SocketConnector.stopAnalyze()
+        }
+
+        Connections {
+            target: SocketConnector.manager
+
+            function onDataAdded(p, loc) {
+                analyzeModel.append({ pos: p, location: loc })
+            }
         }
 
         ListView {
             anchors.fill: parent
 
             model: analyzeModel
+            spacing: 8
+
+            delegate: MouseArea {
+                width: ListView.view.width
+                height: 80
+
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                onClicked: mouse => {
+                    if (mouse.button === Qt.RightButton) {
+                        menu.popup()
+                        return
+                    }
+                    screenshot.source = "file:///" + model.location + "/screenshot.png"
+                    treeModel.loadFile(model.location + "/dump.json")
+                    const idx = treeModel.searchByCoordinates(model.pos.x, model.pos.y)
+                    if (idx) {
+                        treeView.selectByIndex(idx)
+                        treeView.positionViewAtRow(treeView.rowAtIndex(idx), Qt.AlignVCenter)
+                    }
+                }
+
+                Menu {
+                    id: menu
+
+                    MenuItem {
+                        text: "Refine"
+                    }
+                    MenuItem {
+                        text: "Delete"
+                        onClicked: {
+                            SocketConnector.manager.remove(model.location)
+                            analyzeModel.remove(index)
+                        }
+                    }
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: Qt.formatDateTime(new Date(parseInt(model.location.split('/').pop())), "yyyy-MM-dd hh:mm:ss")
+                        padding: 4
+                    }
+
+                    Image {
+                        height: parent.height
+                        sourceSize.height: height
+                        source: "file:///" + model.location + "/screenshot.png"
+                        cache: true
+                        fillMode: Image.PreserveAspectFit
+                    }
+                }
+            }
         }
 
         ListModel {
