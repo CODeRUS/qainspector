@@ -57,6 +57,8 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
+    Q_INVOKABLE QModelIndex rootIndex() const;
+
     Q_INVOKABLE QRect getRect(const QModelIndex &index);
     Q_INVOKABLE QJsonObject getData(const QModelIndex &index);
     Q_INVOKABLE QVariantMap getDataVariant(const QModelIndex &index);

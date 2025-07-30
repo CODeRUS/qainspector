@@ -3,6 +3,9 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
 #include <QStandardPaths>
 
 AnalyzeManager::AnalyzeManager(QObject *parent)
@@ -13,7 +16,7 @@ void AnalyzeManager::analyzeDataAdded(const QString &location)
 {
     qDebug() << Q_FUNC_INFO << location;
 
-    QFile pointFile(location + "/point.txt");
+    QFile pointFile(location + "/point.json");
     if (!pointFile.open(QIODevice::ReadOnly))
     {
         qWarning() << Q_FUNC_INFO << "Failed to open point file:" << pointFile.fileName();
@@ -29,16 +32,26 @@ void AnalyzeManager::analyzeDataAdded(const QString &location)
         return;
     }
 
-    QStringList pointLines = QString::fromUtf8(pointData).split(',', Qt::SkipEmptyParts);
-    if (pointLines.size() < 2)
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(pointData, &parseError);
+    if (parseError.error != QJsonParseError::NoError)
     {
-        qWarning() << Q_FUNC_INFO << "Invalid point data in file:" << pointFile.fileName();
+        qWarning() << Q_FUNC_INFO << "Failed to parse point data:" << parseError.errorString();
         return;
     }
+    if (!doc.isObject())
+    {
+        qWarning() << Q_FUNC_INFO << "Point data is not an object:" << pointData;
+        return;
+    }
+    QVariantMap point = doc.object().toVariantMap();
+    point.insert("location", location);
+    if (!point.contains("id"))
+    {
+        point.insert("id", "");
+    }
 
-    QPoint point(pointLines[0].toInt(), pointLines[1].toInt());
-
-    emit dataAdded(point, location);
+    emit dataAdded(point);
 }
 
 void AnalyzeManager::load()
@@ -75,4 +88,47 @@ void AnalyzeManager::remove(const QString &location)
     {
         qWarning() << Q_FUNC_INFO << "Failed to remove directory:" << location;
     }
+}
+
+void AnalyzeManager::refine(const QString &location, const QString &id)
+{
+    qDebug() << Q_FUNC_INFO << location << id;
+
+    QFile pointFile(location + "/point.json");
+    if (!pointFile.open(QIODevice::ReadOnly))
+    {
+        qWarning() << Q_FUNC_INFO << "Failed to open point file:" << pointFile.fileName();
+        return;
+    }
+
+    QByteArray pointData = pointFile.readAll();
+    pointFile.close();
+
+    if (pointData.isEmpty())
+    {
+        qWarning() << Q_FUNC_INFO << "Point data is empty in file:" << pointFile.fileName();
+        return;
+    }
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(pointData, &parseError);
+    if (parseError.error != QJsonParseError::NoError)
+    {
+        qWarning() << Q_FUNC_INFO << "Failed to parse point data:" << parseError.errorString();
+        return;
+    }
+
+    QJsonObject pointObject = doc.object();
+    pointObject.insert("id", id);
+
+    QFile outFile(location + "/point.json");
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        qWarning() << Q_FUNC_INFO << "Failed to open output file:" << outFile.fileName();
+        return;
+    }
+
+    outFile.write(QJsonDocument(pointObject).toJson());
+
+
 }

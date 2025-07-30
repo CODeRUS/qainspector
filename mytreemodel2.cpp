@@ -230,6 +230,11 @@ int MyTreeModel2::columnCount(const QModelIndex& parent) const
     return m_headers.count();
 }
 
+QModelIndex MyTreeModel2::rootIndex() const
+{
+    return createIndex(0, 0, reinterpret_cast<quintptr>(m_rootItem));
+}
+
 QRect MyTreeModel2::getRect(const QModelIndex& index)
 {
     QRect rect;
@@ -306,9 +311,10 @@ QModelIndex MyTreeModel2::searchIndex(const QString& key,
     static bool currentFound = false;
     if (!node)
     {
+        qDebug() << Q_FUNC_INFO << key << value << currentIndex;
         currentFound = false;
     }
-    if (!currentIndex.isValid())
+    if (node == m_rootItem || !currentIndex.isValid() || currentIndex == rootIndex())
     {
         currentFound = true;
     }
@@ -323,8 +329,10 @@ QModelIndex MyTreeModel2::searchIndex(const QString& key,
         const bool match =
             child->data(key) == value || (partialSearch && value.metaType() == QMetaType(QMetaType::QString) &&
                                           child->data(key).toString().contains(value.toString()));
-        if (match)
-            newIndex = createIndex(i, m_headers.indexOf(key), reinterpret_cast<quintptr>(child));
+        if (match) {
+            const auto hIndex = m_headers.indexOf(key);
+            newIndex = createIndex(i, hIndex < 0 ? 0 : hIndex, reinterpret_cast<quintptr>(child));
+        }
 
         if (!currentFound && newIndex == currentIndex)
         {

@@ -223,9 +223,14 @@ void SocketConnector::onDataAvailable()
 
             qDebug() << "Created location:" << location;
 
-            QFile pointFile(location + "/point.txt");
+            QString pointStr = data.mid(9).trimmed();
+            QJsonObject json {
+                { "x", pointStr.section(',', 0, 0).toInt() },
+                { "y", pointStr.section(',', 1, 1).toInt() },
+            };
+            QFile pointFile(location + "/point.json");
             if (pointFile.open(QIODevice::WriteOnly)) {
-                pointFile.write(data.mid(9));
+                pointFile.write(QJsonDocument(json).toJson(QJsonDocument::Compact));
                 pointFile.close();
             } else {
                 qWarning() << Q_FUNC_INFO << "Failed to open file for writing:" << pointFile.fileName();

@@ -13,7 +13,8 @@ public:
 
     Q_INVOKABLE void load();
     Q_INVOKABLE void remove(const QString &location);
+    Q_INVOKABLE void refine(const QString &location, const QString &id);
 
 signals:
-    void dataAdded(const QPoint &point, const QString &location);
+    void dataAdded(const QVariantMap &point);
 };

@@ -23,6 +23,8 @@ Window {
     property string filters: ""
 
     onClosing: {
+        analyzeWindow.close()
+
         appSettings.width = width
         appSettings.height = height
         appSettings.x = x
@@ -430,6 +432,14 @@ Window {
                             if (mouse.button === Qt.RightButton) {
                                 const props = treeModel.getDataVariant(delegate.modelIndex)
                                 propsPopup.showData(props)
+                            } else {
+                                if (analyzeWindow.visible && analyzeWindow.refineIndex >= 0) {
+                                    const m = treeModel.getDataVariant(delegate.modelIndex)
+                                    const loc = analyzeModel.get(analyzeWindow.refineIndex).location
+                                    SocketConnector.manager.refine(loc, m.id)
+                                    analyzeModel.setProperty(analyzeWindow.refineIndex, "id", m.id)
+                                    analyzeWindow.refineIndex = -1
+                                }
                             }
                         }
 
@@ -540,7 +550,7 @@ Window {
             id: searchButton
             Layout.rightMargin: 10
             text: "Search"
-            enabled: SocketConnector.connected && searchField.text
+            enabled: treeView.rows && searchField.text
 
             onClicked: {
                 const nextIndex = treeModel.searchIndex(
@@ -801,39 +811,66 @@ Window {
 
         transientParent: null
 
+        property bool analyzeActive: false
+        property int refineIndex: -1
+
         onVisibleChanged: {
             if (!visible)
                 return
-
-            if (SocketConnector.connected)
-                SocketConnector.startAnalyze()
 
             analyzeModel.clear()
             SocketConnector.manager.load()
         }
 
         onClosing: {
-            if (SocketConnector.connected)
+            if (SocketConnector.connected && analyzeActive)
                 SocketConnector.stopAnalyze()
         }
 
         Connections {
             target: SocketConnector.manager
 
-            function onDataAdded(p, loc) {
-                analyzeModel.append({ pos: p, location: loc })
+            function onDataAdded(p) {
+                analyzeModel.append(p)
+            }
+        }
+
+        ColumnLayout {
+            id: analyzeHeaderItem
+
+            width: parent.width
+            height: 30
+
+            RowLayout {
+                Button {
+                    text: analyzeWindow.analyzeActive ? "Stop" : "Start"
+                    enabled: SocketConnector.connected
+                    onClicked: {
+                        analyzeWindow.analyzeActive = !analyzeWindow.analyzeActive
+                        if (analyzeWindow.analyzeActive) {
+                            SocketConnector.startAnalyze()
+                        } else {
+                            SocketConnector.stopAnalyze()
+                        }
+                    }
+                }
             }
         }
 
         ListView {
+            id: analyzeView
             anchors.fill: parent
+            anchors.topMargin: analyzeHeaderItem.height
+            clip: true
+            currentIndex: -1
 
             model: analyzeModel
             spacing: 8
-
             delegate: MouseArea {
+                id: analyzeDelegate
+
                 width: ListView.view.width
-                height: 80
+                height: 120
 
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
 
@@ -842,13 +879,33 @@ Window {
                         menu.popup()
                         return
                     }
+                    select()
+                }
+
+                function select(forcePoint = false) {
+                    analyzeView.currentIndex = index
                     screenshot.source = "file:///" + model.location + "/screenshot.png"
                     treeModel.loadFile(model.location + "/dump.json")
-                    const idx = treeModel.searchByCoordinates(model.pos.x, model.pos.y)
-                    if (idx) {
-                        treeView.selectByIndex(idx)
-                        treeView.positionViewAtRow(treeView.rowAtIndex(idx), Qt.AlignVCenter)
+                    if (model.id && !forcePoint) {
+                        console.log("search for id:", model.id, treeView.rootIndex, treeModel.rootIndex())
+                        const item = treeModel.searchIndex("id", model.id, false, treeModel.rootIndex())
+                        if (item) {
+                            treeView.selectByIndex(item)
+                            treeView.positionViewAtRow(treeView.rowAtIndex(item), Qt.AlignVCenter)
+                        }
+                    } else {
+                        const idx = treeModel.searchByCoordinates(model.x, model.y)
+                        if (idx) {
+                            treeView.selectByIndex(idx)
+                            treeView.positionViewAtRow(treeView.rowAtIndex(idx), Qt.AlignVCenter)
+                        }
                     }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#10000000"
+                    visible: analyzeView.currentIndex === index
                 }
 
                 Menu {
@@ -856,7 +913,19 @@ Window {
 
                     MenuItem {
                         text: "Refine"
+                        onClicked: {
+                            analyzeWindow.refineIndex = index
+                            analyzeDelegate.select()
+                        }
                     }
+
+                    MenuItem {
+                        text: "Select"
+                        onClicked: {
+                            analyzeDelegate.select(true)
+                        }
+                    }
+
                     MenuItem {
                         text: "Delete"
                         onClicked: {
@@ -876,13 +945,21 @@ Window {
                     }
 
                     Image {
-                        height: parent.height
-                        sourceSize.height: height
+                        Layout.preferredWidth: Math.min(sourceSize.width, parent.width / 2)
+                        Layout.preferredHeight: Math.min(sourceSize.height, parent.height)
+                        Layout.rightMargin: analyzeView.ScrollBar.vertical.visible ? analyzeView.ScrollBar.vertical.width : 4
+
+                        fillMode: Image.PreserveAspectFit
                         source: "file:///" + model.location + "/screenshot.png"
                         cache: true
-                        fillMode: Image.PreserveAspectFit
+                        horizontalAlignment: Image.AlignRight
+                        verticalAlignment: Image.AlignVCenter
                     }
                 }
+            }
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
             }
         }
 
