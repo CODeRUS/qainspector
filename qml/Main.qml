@@ -14,10 +14,13 @@ Window {
     property var widths: [200, 120, 120, 100, 50, 50, 50, 50, 50, 50]
     readonly property int totalWidth: widths.reduce((a, b) => a + b, 0)
 
+    readonly property string settingsLocation: StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/qainspector.ini"
+
     minimumWidth: 600
     minimumHeight: 300
 
     property bool loaded: false
+    property string filters: ""
 
     onClosing: {
         appSettings.width = width
@@ -25,7 +28,15 @@ Window {
         appSettings.x = x
         appSettings.y = y
         appSettings.columnsLayout = JSON.stringify(widths)
+        appSettings.appWindowSplitViewLeft = leftLayout.SplitView.preferredWidth
         appSettings.sync()
+
+        connectionSettings.address = ipField.text
+        connectionSettings.port = portField.text
+        connectionSettings.sync()
+
+        filterSettings.value = filters
+        filterSettings.sync()
     }
 
     Component.onCompleted: {
@@ -40,6 +51,15 @@ Window {
             widths = JSON.parse(appSettings.columnsLayout)
             treeView.forceLayout()
         }
+        if (appSettings.appWindowSplitViewLeft > 0) {
+            leftLayout.SplitView.preferredWidth = appSettings.appWindowSplitViewLeft
+        }
+        if (connectionSettings.address)
+            ipField.text = connectionSettings.address
+        if (connectionSettings.port)
+            portField.text = connectionSettings.port
+        if (filterSettings.value)
+            filters = filterSettings.value
     }
 
     Timer {
@@ -52,11 +72,32 @@ Window {
     Settings {
         id: appSettings
         category: "MainWindow"
+        location: settingsLocation
         property int width
         property int height
         property int x
         property int y
         property string columnsLayout
+        property int appWindowSplitViewLeft
+    }
+
+    Settings {
+        id: connectionSettings
+        category: "Connection"
+        location: settingsLocation
+        property string address
+        property string port
+
+        Component.onCompleted: {
+            console.log("Connection location:", location)
+        }
+    }
+
+    Settings {
+        id: filterSettings
+        category: "Filters"
+        location: settingsLocation
+        property string value
     }
 
     TextMetrics {
@@ -81,12 +122,14 @@ Window {
 
     Connections {
         target: SocketConnector
+
         function onConnectedChanged() {
             if (SocketConnector.connected) {
-                treeModel.loadDump(SocketConnector.getDumpTree())
+                treeModel.loadDump(SocketConnector.getDumpTree(filters))
                 SocketConnector.getGrabWindow()
             }
         }
+
         function onImageData(b64) {
             screenshot.setFromB64(b64)
         }
@@ -168,23 +211,26 @@ Window {
             enabled: SocketConnector.connected
 
             onClicked: {
-                treeModel.loadDump(SocketConnector.getDumpTree())
+                treeModel.loadDump(SocketConnector.getDumpTree(filters))
                 SocketConnector.getGrabWindow()
             }
         }
 
         Button {
-            text: "Detect click"
+            text: "Filters"
             enabled: SocketConnector.connected
 
             onClicked: {
-                SocketConnector.getGrabWindow()
-                treeModel.loadDump(SocketConnector.getDumpTree())
-                const click = SocketConnector.getClick()
-                const newIndex = treeModel.searchByCoordinates(click.x, click.y)
-                if (newIndex) {
-                    treeView.selectByIndex(newIndex)
-                }
+                filtersPopup.show()
+            }
+        }
+
+        Button {
+            text: "Analyze"
+            enabled: SocketConnector.connected
+
+            onClicked: {
+                analyzeWindow.show()
             }
         }
 
@@ -513,6 +559,117 @@ Window {
     }
 
     Window {
+        id: filtersPopup
+        title: "Filters"
+
+        width: 400
+        height: minimumHeight
+
+        minimumWidth: 300
+        minimumHeight: filtersView.count * 30
+
+        onVisibleChanged: {
+            if (!visible)
+                return
+
+            filtersModel.printModelAsJson()
+        }
+
+        ListModel {
+            id: filtersModel
+
+            Component.onCompleted: {
+                const jsonString = '[ \
+                    { "key": "visible", "op": "eq", "value": "1" }, \
+                    { "key": "enabled", "op": "eq", "value": "1" }, \
+                    { "key": "opacity", "op": "gt", "value": "0" } \
+                ]';
+
+                const data = JSON.parse(filters ? filters : jsonString);
+
+                for (let i = 0; i < data.length; i++) {
+                    append(data[i]);
+                }
+            }
+
+            function printModelAsJson() {
+                let result = [];
+                for (let i = 0; i < count; i++) {
+                    result.push(get(i));
+                }
+                filters = JSON.stringify(result);
+                if (SocketConnector.connected) {
+                    treeModel.loadDump(SocketConnector.getDumpTree(filters))
+                }
+            }
+        }
+
+        ListView {
+            id: filtersView
+            anchors.fill: parent
+
+            model: filtersModel
+
+            header: Button {
+                text: "Disable filters"
+                padding: 8
+                onClicked: {
+                    filtersPopup.close()
+                    filters = ""
+                    treeModel.loadDump(SocketConnector.getDumpTree(filters))
+                }
+            }
+
+            delegate: RowLayout {
+                width: ListView.view.width
+                implicitHeight: 30
+
+                TextField {
+                    id: filterKey
+                    Layout.fillWidth: true
+                    padding: 4
+                    text: key
+                    Keys.onReleased: {
+                        filtersModel.setProperty(index, "key", text);
+                        filtersModel.printModelAsJson();
+                    }
+                }
+
+                ComboBox {
+                    id: filterOperation
+                    Layout.preferredWidth: 100
+                    model: ListModel {
+                        ListElement { text: "eq" }
+                        ListElement { text: "ne" }
+                        ListElement { text: "gt" }
+                        ListElement { text: "lt" }
+                    }
+                    currentIndex: find(op)
+
+                    Component.onCompleted: {
+                        currentIndex = find(op)
+                    }
+                    onActivated: idx => {
+                        filtersModel.setProperty(index, "op", currentText);
+                        filtersModel.printModelAsJson();
+                    }
+                }
+
+                TextField {
+                    id: filterValue
+                    Layout.fillWidth: true
+                    padding: 4
+                    text: value
+                    Keys.onReleased: {
+                        filtersModel.setProperty(index, "value", text);
+                        filtersModel.printModelAsJson();
+                    }
+                }
+            }
+        }
+    }
+
+    Window {
         id: propsPopup
         title: "item properties"
 
@@ -631,9 +788,37 @@ Window {
                 }
             }
         }
+    }
 
+    Window {
+        id: analyzeWindow
 
+        width: 1000
+        height: 800
 
+        title: "Analyze tool"
 
+        transientParent: null
+
+        onVisibleChanged: {
+            if (!visible)
+                return
+
+            SocketConnector.startAnalyze()
+        }
+
+        onClosing: {
+            SocketConnector.stopAnalyze()
+        }
+
+        ListView {
+            anchors.fill: parent
+
+            model: analyzeModel
+        }
+
+        ListModel {
+            id: analyzeModel
+        }
     }
 }

@@ -2,6 +2,7 @@
 #include "socketconnector.h"
 
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QTcpSocket>
 
@@ -25,7 +26,7 @@ SocketConnector::SocketConnector(QObject* parent)
                 m_socket->waitForBytesWritten();
 
                 m_socket->waitForReadyRead(500);
-                m_socket->readAll();
+                qDebug().noquote() << m_socket->readAll();
 
                 qWarning() << Q_FUNC_INFO << "connected";
                 emit connectedChanged(true);
@@ -62,15 +63,23 @@ void SocketConnector::setConnected(bool connected)
     qDebug() << Q_FUNC_INFO << "Set connect:" << connected << "Connected:" << isConnected();
 }
 
-QString SocketConnector::getDumpTree()
+QString SocketConnector::getDumpTree(const QString &filter)
 {
-    QJsonObject json;
-    json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
-    json.insert(QStringLiteral("action"), QJsonValue(QStringLiteral("execute")));
-    json.insert(
-        QStringLiteral("params"),
-        QJsonValue::fromVariant(QVariantList{QStringLiteral("app:dumpTree"), QVariantList{}}));
+    qDebug() << filter;
+
+    QJsonDocument filterDoc = QJsonDocument::fromJson(filter.toUtf8());
+
+    QJsonObject json
+    {
+        { "cmd", "action" },
+        { "action", "execute" },
+        { "params", {
+            { "app:dumpTreeFilter",  QJsonArray{{ filterDoc.array() }} }
+        }}
+    };
     const QByteArray data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    qDebug().noquote() << QJsonDocument(json).toJson();
 
     m_socket->write(data);
     m_socket->write("\n", 1);
@@ -147,49 +156,6 @@ QByteArray SocketConnector::getGrabWindow()
             QByteArray::fromBase64(b64.toUtf8());
         qDebug() << Q_FUNC_INFO << img.size();
         return img;
-    }
-    return {};
-}
-
-QPoint SocketConnector::getClick()
-{
-    QJsonObject json;
-    json.insert(QStringLiteral("cmd"), QJsonValue(QStringLiteral("action")));
-    json.insert(QStringLiteral("action"), QJsonValue(QStringLiteral("getClickPoint")));
-    json.insert(QStringLiteral("params"), QJsonValue(QString()));
-    const QByteArray data = QJsonDocument(json).toJson(QJsonDocument::Compact);
-
-    m_socket->write(data);
-    m_socket->write("\n", 1);
-    m_socket->waitForBytesWritten();
-
-    QByteArray replyData;
-    QJsonDocument replyDoc;
-    QJsonParseError error;
-    error.error = QJsonParseError::UnterminatedObject;
-
-    replyDoc = QJsonDocument::fromJson(replyData, &error);
-
-    while (error.error != QJsonParseError::NoError)
-    {
-        if (!m_socket->waitForReadyRead(-1))
-        {
-            qWarning() << Q_FUNC_INFO << "Timeout" << error.error << error.errorString();
-            qDebug().noquote() << replyData;
-            return {};
-        }
-        replyData.append(m_socket->readAll());
-        qDebug() << replyData;
-        replyDoc = QJsonDocument::fromJson(replyData, &error);
-    }
-
-    QJsonObject replyObject = replyDoc.object();
-    if (replyObject.contains(QStringLiteral("status")) &&
-        replyObject.value(QStringLiteral("status")).toInt() == 0)
-    {
-        const auto pointObject = replyObject.value(QStringLiteral("value")).toObject();
-        QPoint point(pointObject.value("x").toInt(), pointObject.value("y").toInt());
-        return point;
     }
     return {};
 }
